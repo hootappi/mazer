@@ -1,4 +1,4 @@
-import { paperDimensions } from "./paper.js";
+import { paperDimensions, paperMetrics, PASSAGE_MM } from "./paper.js";
 const NS = "http://www.w3.org/2000/svg";
 export function element(tag, attrs = {}) {
   const el = document.createElementNS(NS, tag);
@@ -12,6 +12,11 @@ function arc(r, a, b) {
   return `M${polar(r, a)} A${r},${r} 0 ${b - a > Math.PI ? 1 : 0} 1 ${polar(r, b)}`;
 }
 export function viewBox(maze) {
+  if (maze.recipe.v === 2) {
+    return maze.radius
+      ? `${-maze.radius - 0.15} ${-maze.radius - 0.15} ${(maze.radius + 0.15) * 2} ${(maze.radius + 0.15) * 2}`
+      : `-.15 -.15 ${maze.cols + 0.3} ${maze.rows + 0.3}`;
+  }
   return maze.radius
     ? `${-maze.radius - 0.8} ${-maze.radius - 0.8} ${(maze.radius + 0.8) * 2} ${(maze.radius + 0.8) * 2}`
     : `-.8 -.8 ${maze.cols + 1.6} ${maze.rows + 1.6}`;
@@ -166,10 +171,11 @@ export function updateTrace(svg, maze, path) {
 // The preview and every export use this same physical sheet layout.
 export function renderPaper(maze, layout, options = {}) {
   const [width, height] = paperDimensions(layout);
-  const scale = Math.min(width, height) / 210;
-  const margin = 12 * scale,
-    header = 35 * scale,
-    footer = 35 * scale;
+  const physical = maze.recipe.v === 2;
+  const scale = physical ? 1 : Math.min(width, height) / 210;
+  const margin = physical ? 8 : 12 * scale,
+    header = physical ? 20 : 35 * scale,
+    footer = physical ? 22 : 35 * scale;
   const ink = options.ink ?? "#29352c",
     paper = options.paper ?? "#fffcf5";
   const svg = element("svg", {
@@ -209,20 +215,47 @@ export function renderPaper(maze, layout, options = {}) {
     svg.append(node);
     return node;
   }
-  text("MAZER", margin, 20 * scale, 7, {
+  text("MAZER", margin, (physical ? 13 : 20) * scale, physical ? 5 : 7, {
     "font-weight": 700,
     "letter-spacing": 1.1 * scale,
   });
-  text("A little lost. A lot of possibility.", margin, 27 * scale, 2.4);
+  text(
+    "A little lost. A lot of possibility.",
+    margin,
+    (physical ? 17 : 27) * scale,
+    2.4,
+  );
   const art = render(maze, options);
   art.setAttribute("data-maze-art", "");
   art.setAttribute("x", margin);
   art.setAttribute("y", header);
   art.setAttribute("width", width - 2 * margin);
   art.setAttribute("height", height - header - footer);
+  if (physical) {
+    const pitch = PASSAGE_MM[maze.recipe.size],
+      box = viewBox(maze).split(" ").map(Number),
+      area = paperMetrics(layout),
+      w = box[2] * pitch,
+      h = box[3] * pitch;
+    art.setAttribute("width", w);
+    art.setAttribute("height", h);
+    art.setAttribute("x", (width - w) / 2);
+    art.setAttribute("y", header + (area.availableHeight - h) / 2);
+    art.setAttribute("data-passage-mm", pitch);
+  }
   svg.append(art);
-  text("Find your way from A to B.", margin, height - 26 * scale, 3);
-  const line = text("", margin, height - 19.5 * scale, 2.8);
+  text(
+    "Find your way from A to B.",
+    margin,
+    height - (physical ? 18 : 26) * scale,
+    physical ? 2.4 : 3,
+  );
+  const line = text(
+    "",
+    margin,
+    height - (physical ? 13.5 : 19.5) * scale,
+    physical ? 2.4 : 2.8,
+  );
   const label = (value) => value[0].toUpperCase() + value.slice(1);
   for (const [id, value] of [
     [
@@ -244,13 +277,19 @@ export function renderPaper(maze, layout, options = {}) {
     span.textContent = value;
     line.append(span);
   }
-  text(`MAZE / ${maze.recipe.seed}`, margin, height - 13 * scale, 2.8, {
-    id: "maze-label",
-  });
   text(
-    `${layout.paper} · ${label(layout.orientation)} · ${width} × ${height} mm`,
+    `MAZE / ${maze.recipe.seed}`,
     margin,
-    height - 6.5 * scale,
+    height - (physical ? 9 : 13) * scale,
+    physical ? 2.4 : 2.8,
+    {
+      id: "maze-label",
+    },
+  );
+  text(
+    `${layout.paper} · ${label(layout.orientation)} · ${width} × ${height} mm${physical ? ` · ${PASSAGE_MM[maze.recipe.size]} mm passages` : ""}`,
+    margin,
+    height - (physical ? 5 : 6.5) * scale,
     2.5,
     { "fill-opacity": 0.7 },
   );

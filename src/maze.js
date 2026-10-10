@@ -1,3 +1,4 @@
+import { paperLayout, physicalMaze } from "./paper.js";
 // The generator version is part of every recipe. Keep v1 stable for old links.
 export const SHAPES = ["square", "portrait", "landscape", "round"];
 export const SIZES = ["small", "medium", "large"];
@@ -5,7 +6,7 @@ export const LEVELS = ["easy", "steady", "hard"];
 export function recipe(input) {
   if (
     !input ||
-    input.v !== 1 ||
+    ![1, 2].includes(input.v) ||
     !SHAPES.includes(input.shape) ||
     !SIZES.includes(input.size) ||
     !LEVELS.includes(input.level) ||
@@ -13,13 +14,24 @@ export function recipe(input) {
     !/^[a-zA-Z0-9_-]{1,32}$/.test(input.seed)
   )
     throw new Error("This maze recipe is not supported.");
-  return {
-    v: 1,
+  const canonical = {
+    v: input.v,
     seed: input.seed,
     shape: input.shape,
     size: input.size,
     level: input.level,
   };
+  if (input.v === 2) {
+    if (!input.paper || !input.orientation)
+      throw new Error("This maze needs a paper size and orientation.");
+    Object.assign(canonical, paperLayout(input));
+    if (
+      ["portrait", "landscape"].includes(input.shape) &&
+      input.shape !== canonical.orientation
+    )
+      throw new Error("Rectangle orientation must match its paper.");
+  }
+  return canonical;
 }
 export function encode(input) {
   return new URLSearchParams(recipe(input)).toString();
@@ -55,7 +67,7 @@ function topology(r) {
     if (!neighbors[b].includes(a)) neighbors[b].push(a);
   };
   if (r.shape === "round") {
-    const count = [4, 6, 9][index];
+    const count = r.v === 2 ? physicalMaze(r).radius - 1 : [4, 6, 9][index];
     add({ ring: 0, sector: 0, sectors: 1, x: 0, y: 0 });
     rings.push([0]);
     for (let ring = 1; ring <= count; ring++) {
@@ -95,6 +107,7 @@ function topology(r) {
     rows = cols;
   if (r.shape === "portrait") rows = Math.round(cols * 1.5);
   if (r.shape === "landscape") cols = Math.round(cols * 1.5);
+  if (r.v === 2) ({ cols, rows } = physicalMaze(r));
   for (let y = 0; y < rows; y++)
     for (let x = 0; x < cols; x++)
       add({ x: x + 0.5, y: y + 0.5, row: y, col: x });
@@ -124,7 +137,11 @@ export function generate(input) {
     topo = topology(r),
     candidates = [];
   for (let attempt = 0; attempt < 16; attempt++) {
-    const rng = random(`${r.seed}:${r.shape}:${r.size}:1:${attempt}`),
+    const rng = random(
+        r.v === 1
+          ? `${r.seed}:${r.shape}:${r.size}:1:${attempt}`
+          : `${r.seed}:${r.shape}:${r.size}:2:${r.paper}:${r.orientation}:${attempt}`,
+      ),
       passages = topo.cells.map(() => []),
       visited = new Set([topo.start]),
       stack = [topo.start];

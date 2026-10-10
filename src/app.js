@@ -11,12 +11,14 @@ import {
   score,
 } from "./maze.js";
 import { render, renderPaper, updateTrace } from "./render.js";
-import { paperLayout, paperDimensions } from "./paper.js";
+import { paperLayout, paperDimensions, PASSAGE_MM } from "./paper.js";
 const $ = (selector) => document.querySelector(selector),
   $$ = (selector) => [...document.querySelectorAll(selector)];
 const state = {
   recipe: {
-    v: 1,
+    v: 2,
+    paper: "A4",
+    orientation: "portrait",
     seed: "WANDER-001",
     shape: "square",
     size: "medium",
@@ -81,7 +83,10 @@ function collection() {
     .flatMap((item) => {
       try {
         return [
-          { ...recipe(item), layout: paperLayout(item.layout, item.shape) },
+          {
+            ...recipe(item),
+            layout: paperLayout(item.v === 2 ? item : item.layout, item.shape),
+          },
         ];
       } catch {
         return [];
@@ -135,7 +140,10 @@ function documentQuery(r = state.recipe, layout = state.layout) {
   return params.toString();
 }
 function keptKey(item) {
-  return documentQuery(item, paperLayout(item.layout, item.shape));
+  return documentQuery(
+    item,
+    paperLayout(item.v === 2 ? item : item.layout, item.shape),
+  );
 }
 function writeURL() {
   const params = new URLSearchParams(documentQuery());
@@ -164,6 +172,10 @@ function draw() {
         String(button.dataset[key] === state.layout[key]),
       ),
     );
+  $("#passage-note").textContent =
+    state.recipe.v === 2
+      ? `${PASSAGE_MM[state.recipe.size]} mm passages · ${state.maze.cells.length.toLocaleString()} cells. Bigger paper, more maze.`
+      : "Original maze. Change a setting to use fixed-width passages.";
   $("#paper-dimensions").textContent = `${width} × ${height} mm`;
   $("#paper-summary").textContent =
     `${state.layout.paper} / ${state.layout.orientation.toUpperCase()}`;
@@ -173,7 +185,8 @@ function draw() {
 function load(r, { keepChallenge = false } = {}) {
   if (state.playing || state.busy) return;
   state.recipe = recipe(r);
-  if (r.layout) state.layout = paperLayout(r.layout, r.shape);
+  if (r.v === 2) state.layout = paperLayout(r, r.shape);
+  else if (r.layout) state.layout = paperLayout(r.layout, r.shape);
   state.maze = generate(state.recipe);
   state.path = [];
   state.solution = false;
@@ -492,7 +505,7 @@ async function leaderboard() {
         }),
         Object.assign(document.createElement("span"), {
           className: "leader-maze",
-          textContent: `${entry.recipe.seed} · ${names[entry.recipe.shape]} / ${names[entry.recipe.size]} / ${names[entry.recipe.level]} · ${time(entry.elapsed)}`,
+          textContent: `${entry.recipe.seed} · ${names[entry.recipe.shape]} / ${names[entry.recipe.size]} / ${names[entry.recipe.level]}${entry.recipe.v === 2 ? ` · ${entry.recipe.paper} ${entry.recipe.orientation}` : ""} · ${time(entry.elapsed)}`,
         }),
       );
       const points = Object.assign(document.createElement("span"), {
@@ -670,7 +683,7 @@ for (const key of ["shape", "size", "level"])
         key === "shape" && button.dataset.shape === "rectangle"
           ? state.layout.orientation
           : button.dataset[key];
-      load({ ...state.recipe, [key]: value });
+      load({ ...state.recipe, v: 2, ...state.layout, [key]: value });
     }),
   );
 for (const key of ["paper", "orientation"])
@@ -681,22 +694,25 @@ for (const key of ["paper", "orientation"])
         ...state.layout,
         [key]: button.dataset[key],
       });
-      if (
-        key === "orientation" &&
-        ["portrait", "landscape"].includes(state.recipe.shape)
-      )
-        load({ ...state.recipe, shape: state.layout.orientation });
-      else {
-        draw();
-        writeURL();
-        updateKeep();
-      }
+      load({
+        ...state.recipe,
+        v: 2,
+        ...state.layout,
+        shape: ["portrait", "landscape"].includes(state.recipe.shape)
+          ? state.layout.orientation
+          : state.recipe.shape,
+      });
     }),
   );
 $("#seed-form").addEventListener("submit", (event) => {
   event.preventDefault();
   try {
-    load({ ...state.recipe, seed: $("#seed").value.trim() });
+    load({
+      ...state.recipe,
+      v: 2,
+      ...state.layout,
+      seed: $("#seed").value.trim(),
+    });
   } catch (error) {
     toast(error.message);
   }
@@ -704,6 +720,8 @@ $("#seed-form").addEventListener("submit", (event) => {
 $("#generate").addEventListener("click", () =>
   load({
     ...state.recipe,
+    v: 2,
+    ...state.layout,
     seed: "M-" + crypto.randomUUID().slice(0, 8).toUpperCase(),
   }),
 );

@@ -120,3 +120,29 @@ test("v1 maze fingerprint remains frozen for existing shared links", () => {
     "e6014ec16af5ba5a6b51ee94a381c446f0b01738c26921799c0dcf63ac8cb418",
   ]);
 });
+
+test("v2 physical maze fingerprints stay frozen for shared boards", () => {
+  const hashes = SHAPES.map((shape) =>
+    createHash("sha256")
+      .update(
+        JSON.stringify(
+          generate({
+            v: 2,
+            seed: "WANDER-001",
+            shape,
+            size: "medium",
+            level: "steady",
+            paper: "A4",
+            orientation: shape === "landscape" ? "landscape" : "portrait",
+          }).passages,
+        ),
+      )
+      .digest("hex"),
+  );
+  assert.deepEqual(hashes, [
+    "33e871d7db3ad3223a10080af67a787ee1b0a8cc8373fae1f282b14cc12a2bcb",
+    "723b40445292db64152443622fdb1f32749b5319918f5ac1ad2430177787d4e8",
+    "40ef963786d2ea182b8210fa2ed7d072add8e42287162f5b5d89cd302cfea13b",
+    "0759676e66e5d9e25a9dc16f21430ad0449a348a7bd76507fd96203d9c25d677",
+  ]);
+});

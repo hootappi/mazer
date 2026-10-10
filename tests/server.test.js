@@ -82,12 +82,36 @@ test("ranked runs validate routes, save names once, persist and filter challenge
       ).scores.length,
       0,
     );
+    const physical = { ...r, v: 2, paper: "A6", orientation: "portrait" };
+    const physicalMaze = generate(physical);
+    const physicalRun = await (await post("runs", { recipe: physical })).json();
+    now += 10000;
+    const physicalResult = await (
+      await post("finish", { id: physicalRun.id, path: physicalMaze.solution })
+    ).json();
+    assert.deepEqual(physicalResult.recipe, physical);
+    assert.equal(
+      (
+        await post("scores", {
+          token: physicalResult.token,
+          name: "Paper player",
+        })
+      ).status,
+      201,
+    );
+    const physicalBoard = await (
+      await fetch(
+        url + "/api/leaderboard?maze=" + encodeURIComponent(encode(physical)),
+      )
+    ).json();
+    assert.equal(physicalBoard.scores.length, 1);
+    assert.deepEqual(physicalBoard.scores[0].recipe, physical);
     await close();
     app = createApp({ dataDir: dir, clock: () => now });
     url = await open();
     assert.equal(
       (await (await fetch(url + "/api/leaderboard")).json()).scores.length,
-      1,
+      2,
     );
     const exp = await (await post("runs", { recipe: r })).json();
     now += 3600001;

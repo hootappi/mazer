@@ -1,6 +1,6 @@
 # Mazer build plan
 
-Status: v1 implemented, verified and deployed. 10 October 2026.
+Status: initial release deployed; physical paper sizing uses recipe v2 while retaining v1 compatibility. 10 October 2026.
 
 ## Product
 
@@ -16,7 +16,7 @@ Mazer creates reproducible mazes that people can play, share with friends, expor
 
 ## First release
 
-1. Create: choose paper size A6–A2, orientation, maze shape, maze size and difficulty; generate again or enter a seed. Start with square, portrait rectangle, landscape rectangle and concentric round mazes. Each style must have a real, connected maze topology, rather than only changing its appearance.
+1. Create: choose paper size A6–A2, orientation, maze shape, maze density and difficulty; larger paper adds cells at fixed physical passage spacing; generate again or enter a seed. Start with square, portrait rectangle, landscape rectangle and concentric round mazes. Each style must have a real, connected maze topology, rather than only changing its appearance.
 2. Play: move from entrance to exit with touch tracing/swiping or keyboard. Show elapsed time and moves, support an unranked practice mode, and give a clear completion result.
 3. Score: compare actual moves with the shortest valid route and reward speed within comparable maze settings. Document and version the scoring formula. Provide a global points leaderboard and a per-maze filter. Same-board challenges are the fairest comparison; do not rank unrelated puzzles by raw elapsed time.
 4. Challenge: share a permanent URL containing the versioned maze recipe. A friend gets exactly the same maze and can compare their result with the challenger.
@@ -62,3 +62,7 @@ Mazer creates reproducible mazes that people can play, share with friends, expor
 ## Delivery
 
 Mazer v1 is live at https://mazer.lab.hootappi.com and published in the public hootappi/mazer repository. Local logic/API tests, 20 Chrome browser checks and GitHub Actions passed. The Docker image was built on lab, tested through the tailnet, then published through Caddy with index/dashboard entries. Public HTTPS gameplay and server route validation passed. SQLite integrity and a live backup were verified. Physical iOS/Safari testing and future roadmap items are not part of this verification.
+
+## Physical sizing refinement
+
+Generate v2 boards from the paper’s usable area with fixed 14/10/7 mm cell spacing. Preserve v1 links, fixtures and stored scores. Include physical paper settings in shares, saves and ranking identity; verify growth across all paper sizes and real SVG/print scaling before deployment.

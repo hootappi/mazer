@@ -12,6 +12,7 @@ WORKDIR /app
 COPY --from=build --chown=node:node /app/dist ./dist
 COPY --chown=node:node server.js ./
 COPY --from=build --chown=node:node /app/src/maze.js ./src/maze.js
+COPY --from=build --chown=node:node /app/src/paper.js ./src/paper.js
 RUN mkdir -p /app/data && chown node:node /app/data
 USER node
 EXPOSE 3000

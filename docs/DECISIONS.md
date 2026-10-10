@@ -27,6 +27,14 @@ Implementation choices:
 Paper workflow update, 10 October 2026:
 
 - Controls are paper size (A6, A5, A4, A3, A2), orientation, shape, maze size and difficulty, in that order. The action label is PLAY.
-- Paper size/orientation are presentation settings, carried by share links and saved collections. They do not change the v1 recipe or score identity. No database migration is required. Existing links and saved recipes still load.
+- For legacy v1 mazes, paper size/orientation are presentation settings carried by share links and saved collections. Existing links, saved recipes and scores retain their original topology and identity. New mazes now use v2 as described below; no database migration is required.
 - UI shape choices are Square, Rectangle and Round. A rectangle follows the chosen orientation through the existing portrait/landscape v1 generator variants. Square and round boards retain their geometry when the paper orientation changes.
 - The sheet displays title, maze and small bottom-left details. Keep, PLAY, Export and Share live below the sheet.
+
+Physical maze sizing update, 10 October 2026:
+
+- New recipes use v2 and include paper size and orientation in the canonical identity. Choosing any generator setting or generating another seed upgrades a loaded v1 board to v2; simply opening, playing or sharing an old maze preserves it.
+- Maze size controls density: Small uses 14 mm cell spacing, Medium 10 mm, Large 7 mm. A larger sheet gains cells rather than magnifying them. These are nominal wall-to-wall spacings; wall strokes occupy part of that width. Round mazes keep the same radial ring spacing, with sector widths varying under the polar topology.
+- v2 uses fixed 8 mm side margins, a 20 mm header, a 22 mm footer and 0.15 cell padding around the maze. Rectangles fill the available area with whole cells; square and round mazes use the shorter available dimension. The renderer uses the same geometry and exact physical spacing in preview, SVG, PNG and print. Print at actual size/100% to retain millimetre spacing.
+- At Medium density, an A6 portrait square is 8 × 8 cells and an A2 portrait square is 40 × 40 cells, both at 10 mm spacing. Orientation also changes the space available to the maze.
+- v2 paper settings are part of ranked-run validation, persistent score identity and same-board challenges. Both versions remain supported. Supported paper/density combinations bound generated maze size below 8,000 cells; existing route and request limits remain sufficient.

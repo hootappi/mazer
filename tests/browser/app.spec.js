@@ -393,3 +393,50 @@ test("paper workflow matches preview, sharing, saved layout and physical print s
     fullPage: true,
   });
 });
+
+test("paper size adds cells with constant millimetre passage widths and v2 ranked challenges", async ({
+  page,
+}, info) => {
+  await page.goto(
+    `/?v=2&seed=PAPER-${info.project.name}&shape=square&size=medium&level=easy&paper=A6&orientation=portrait`,
+  );
+  const measure = () =>
+    page.evaluate(async () => {
+      const { generate, decode } = await import("/src/maze.js");
+      const maze = generate(decode(location.search)),
+        svg = document.querySelector("#maze-stage svg[data-maze-art]");
+      return {
+        cells: maze.cells.length,
+        pitch: svg.width.baseVal.value / svg.viewBox.baseVal.width,
+        rows: maze.rows,
+        cols: maze.cols,
+      };
+    });
+  const small = await measure();
+  expect(small.pitch).toBeCloseTo(10, 5);
+  await page.locator('button[data-paper="A2"]').click();
+  const huge = await measure();
+  expect(huge.pitch).toBeCloseTo(10, 5);
+  expect(huge.cells).toBeGreaterThan(small.cells * 10);
+  await expect(page.locator("#passage-note")).toContainText("10 mm passages");
+  await page.locator('button[data-paper="A6"]').click();
+  expect(await measure()).toEqual(small);
+  await page.locator("#play").click();
+  await solveWithPointer(page);
+  await expect(page.locator("#result-dialog")).toBeVisible();
+  await expect(page.locator("#result-status")).toContainText("verified");
+  const name = `Paper-${info.project.name}-${Date.now().toString(36)}`;
+  await page.locator("#player-name").fill(name);
+  await page.locator("#post-score").click();
+  await expect(page.locator("#name-form")).toBeHidden();
+  await page.locator("#result-leaderboard").click();
+  await page
+    .getByRole("button", {
+      name: `Challenge ${name} on maze PAPER-${info.project.name}`,
+      exact: false,
+    })
+    .click();
+  expect(new URL(page.url()).searchParams.get("v")).toBe("2");
+  expect(new URL(page.url()).searchParams.get("paper")).toBe("A6");
+  expect(await measure()).toEqual(small);
+});
