@@ -370,6 +370,10 @@ test("paper workflow matches preview, sharing, saved layout and physical print s
       printPage = await browser.newPage();
     try {
       await printPage.setContent(html);
+      const printedPitch = await printPage
+        .locator("svg[data-maze-art]")
+        .evaluate((svg) => (svg.getScreenCTM().a * 25.4) / 96);
+      expect(printedPitch).toBeCloseTo(10, 2);
       const pdf = await printPage.pdf({ preferCSSPageSize: true });
       const text = pdf.toString("latin1");
       expect((text.match(/\/Type \/Page\b/g) || []).length).toBe(1);

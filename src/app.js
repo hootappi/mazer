@@ -651,8 +651,9 @@ function printMaze() {
   );
   doc.close();
   const style = doc.createElement("style");
-  // A fraction of a millimetre avoids a second page from browser rounding.
-  style.textContent = `@page{size:${width}mm ${height}mm;margin:0}html,body{margin:0;padding:0;width:${width}mm;height:${height - 0.2}mm}svg{display:block;width:${width}mm;height:${height - 0.2}mm;break-inside:avoid}`;
+  // Keep the sheet at its exact physical size outside document flow to avoid
+  // an extra page caused by rounding at the page boundary.
+  style.textContent = `@page{size:${width}mm ${height}mm;margin:0}html,body{margin:0;padding:0;width:${width}mm;height:${height - 0.2}mm}svg{display:block;position:absolute;top:0;left:0;width:${width}mm;height:${height}mm;break-inside:avoid}`;
   doc.head.append(style);
   doc.body.append(doc.importNode(exportSVG(true), true));
   setTimeout(() => {
