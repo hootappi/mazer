@@ -1,6 +1,6 @@
 # Mazer build plan
 
-Status: confirmed scope, implementation and verification in progress. 10 October 2026.
+Status: v1 implemented, verified and deployed. 10 October 2026.
 
 ## Product
 
@@ -11,7 +11,7 @@ Mazer creates reproducible mazes that people can play, share with friends, expor
 - Follow hootappi/AI-setup-tappi, especially AGENTS.md, me/coding.md, me/preferences.md and me/working-style.md. This is Keeper work because it will be public and store scores.
 - Follow hootappi/lab-vps-setup/vps-setup-lab.md. Docker Compose, Caddy, edge network, persistent bind mounts under ~/data/mazer, first verify on the tailnet, then publish. No changes to shared firewall or SSH configuration.
 - Visual references: the local WOBBLE Creator and wobble-game. Warm paper, dark green ink, restrained pastel accents, generous space, quiet typography, rounded touch controls and recognizable Wobble geometry.
-- Proposed repository: public hootappi/mazer. Proposed URL: https://mazer.lab.hootappi.com, linked from the lab index and private Homepage dashboard.
+- Repository: public hootappi/mazer. Public URL: https://mazer.lab.hootappi.com, linked from the lab index and private Homepage dashboard.
 - Public project documentation must not copy private personal context or infrastructure details. Secrets stay outside Git.
 
 ## First release
@@ -25,7 +25,7 @@ Mazer creates reproducible mazes that people can play, share with friends, expor
 7. Keep: save favorite mazes and personal records in the browser. Explain that these are local to the device.
 8. Themes: ship one Wobble-inspired theme, keep presentation separate from maze and rules, and provide two small alternative visual studies without building a large theme system.
 
-## Proposed architecture
+## Architecture
 
 - Browser-native JavaScript ES modules, using SVG for scalable maze rendering and export. Keep the UI lightweight.
 - A shared deterministic maze core: versioned recipe, seeded generation, connectivity checks, shortest-route solver and move validation. Difficulty selects measured entrance-to-exit route length within a deterministic candidate family; branches and dead ends remain part of the generated topology.
@@ -58,3 +58,7 @@ Mazer creates reproducible mazes that people can play, share with friends, expor
 - Workspace was empty when inspected.
 - Connected GitHub tools can read both setup repositories. GitHub CLI authentication works with the required host access; public hootappi/mazer has been created.
 - Tailscale and key-authenticated SSH to lab were verified from this MacBook Air. Existing stacks were inspected before deployment.
+
+## Delivery
+
+Mazer v1 is live at https://mazer.lab.hootappi.com and published in the public hootappi/mazer repository. Local logic/API tests, 20 Chrome browser checks and GitHub Actions passed. The Docker image was built on lab, tested through the tailnet, then published through Caddy with index/dashboard entries. Public HTTPS gameplay and server route validation passed. SQLite integrity and a live backup were verified. Physical iOS/Safari testing and future roadmap items are not part of this verification.

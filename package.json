@@ -3,7 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=24.0.0" },
+  "engines": {
+    "node": ">=24.0.0"
+  },
   "scripts": {
     "dev": "node --watch server.js",
     "start": "node server.js --production",
@@ -12,5 +14,7 @@
     "check": "node --test tests/*.test.js && node scripts/build.js",
     "test:browser": "playwright test"
   },
-  "devDependencies": { "@playwright/test": "1.58.2" }
+  "devDependencies": {
+    "@playwright/test": "1.58.2"
+  }
 }

@@ -11,3 +11,9 @@ Browser checks cover all four shapes, local saving and reloading, SVG/PNG/JSON d
 Screenshots were visually inspected at phone and desktop sizes. Tests use Chrome's device emulation, not physical iOS/Safari devices. Physical device testing remains useful for future refinements.
 
 Run `npm ci`, `npm run check` and `npm run test:browser` to reproduce. Browser fixtures use separate ignored local data and never write to the public leaderboard. GitHub Actions runs these checks on pushes and pull requests.
+
+## Deployment verification
+
+The production Docker image built successfully on lab and passed its health check. Chrome completed a ranked round maze through both tailnet and public HTTPS endpoints, received a server-verified result and loaded the leaderboard with zero browser errors. No synthetic scores were posted publicly. The lab index link and healthy Homepage dashboard were verified. Mazer has no host port binding after publication. SQLite integrity returned `ok`; a live backup was created and opened successfully. Backup restoration was not performed against live data.
+
+The initial release also passed [GitHub Actions](https://github.com/hootappi/mazer/actions/runs/38029226059), including logic/API tests, build and the browser suite on Linux.

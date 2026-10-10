@@ -48,7 +48,7 @@ The score combines route efficiency and pace, normalized by shortest-route lengt
 
 Public repository: https://github.com/hootappi/mazer
 
-Publication target: https://mazer.lab.hootappi.com
+Live app: https://mazer.lab.hootappi.com
 
 See [deployment](docs/DEPLOYMENT.md) for Docker/Caddy, persistent storage, backups and updates; [plan](PLAN.md) for scope; [decisions](docs/DECISIONS.md) for current behavior; and [roadmap](docs/ROADMAP.md) for tilt gameplay, optional native iOS and manufacturing.
 
