@@ -1,0 +1,23 @@
+services:
+  mazer:
+    build: .
+    container_name: mazer
+    restart: unless-stopped
+    init: true
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    environment:
+      TRUST_PROXY: "1"
+      DATA_DIR: /app/data
+    volumes:
+      - ${MAZER_DATA_DIR:-/home/hootappi/data/mazer}:/app/data
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+    mem_limit: 256m
+    cpus: 1.0
+    networks:
+      - edge
+networks:
+  edge:
+    external: true

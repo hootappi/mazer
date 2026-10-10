@@ -1,0 +1,6 @@
+services:
+  mazer:
+    ports:
+      - "${TAILNET_IP:?Set TAILNET_IP in .env}:${MAZER_PORT:-3003}:3000"
+    environment:
+      TRUST_PROXY: "0"
