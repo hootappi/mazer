@@ -11,6 +11,7 @@ These are options, not delivery promises.
 
 ## Alternative gameplay: tilt the ball
 
+- Extend the readiness step with optional calibration before the timer begins when a sensor mode is introduced.
 - Prototype DeviceOrientation controls behind an explicit permission button where required by the browser, plus calibration, a dead zone and landscape/portrait handling.
 - Add ball movement and wall collision as a separate input/gameplay mode using the same versioned maze definition.
 - Keep a distinct scoring/leaderboard category for tilt so physics and trace times are not mixed.

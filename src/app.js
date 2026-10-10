@@ -10,7 +10,7 @@ import {
   directional,
   score,
 } from "./maze.js";
-import { render, renderPaper, updateTrace } from "./render.js";
+import { render, renderPaper, updateTrace, viewBox } from "./render.js";
 import { paperLayout, paperDimensions, PASSAGE_MM } from "./paper.js";
 const $ = (selector) => document.querySelector(selector),
   $$ = (selector) => [...document.querySelectorAll(selector)];
@@ -27,6 +27,11 @@ const state = {
   layout: paperLayout(),
   maze: null,
   playing: false,
+  gameOpen: false,
+  generation: 0,
+  paused: false,
+  input: "draw",
+  rotationBlocked: false,
   busy: false,
   path: [],
   started: 0,
@@ -154,7 +159,11 @@ function writeURL() {
   history.replaceState(null, "", "?" + params);
 }
 function draw() {
-  const svg = renderPaper(state.maze, state.layout, {
+  const svg = (
+    state.gameOpen
+      ? render
+      : (maze, options) => renderPaper(maze, state.layout, options)
+  )(state.maze, {
     ...colors(),
     path: state.path,
     player: state.playing,
@@ -162,7 +171,24 @@ function draw() {
   });
   const [width, height] = paperDimensions(state.layout);
   const stage = $("#maze-stage");
+  stage.setAttribute(
+    "aria-label",
+    state.gameOpen
+      ? "Maze gameplay. Draw through passages, tap adjacent cells or use arrow keys. Switch to Swipe for directional steps."
+      : "Paper preview. Choose Play to begin.",
+  );
   stage.style.aspectRatio = `${width} / ${height}`;
+  if (state.gameOpen) {
+    svg.setAttribute("data-maze-art", "");
+    const box = viewBox(state.maze).split(" ").map(Number),
+      area = $(".paper-preview").getBoundingClientRect(),
+      scale = Math.min(area.width / box[2], area.height / box[3]);
+    stage.style.width = `${box[2] * scale}px`;
+    stage.style.height = `${box[3] * scale}px`;
+  } else {
+    stage.style.removeProperty("width");
+    stage.style.removeProperty("height");
+  }
   stage.dataset.orientation = state.layout.orientation;
   stage.replaceChildren(svg);
   for (const key of ["paper", "orientation"])
@@ -183,7 +209,7 @@ function draw() {
     `${state.layout.paper} · ${names[state.layout.orientation]}`;
 }
 function load(r, { keepChallenge = false } = {}) {
-  if (state.playing || state.busy) return;
+  if (state.gameOpen || state.busy) return;
   state.recipe = recipe(r);
   if (r.v === 2) state.layout = paperLayout(r, r.shape);
   else if (r.layout) state.layout = paperLayout(r.layout, r.shape);
@@ -232,7 +258,7 @@ function updateKeep() {
   $("#save").setAttribute("aria-pressed", String(active));
 }
 function tab(name) {
-  if (state.playing || state.busy) {
+  if (state.gameOpen || state.busy) {
     toast("Finish your run or go back to the creator first.");
     return;
   }
@@ -247,6 +273,10 @@ function tab(name) {
   if (name === "saved") saved();
 }
 function setPlayUI(active) {
+  document.body.classList.toggle("game-mode", active);
+  $$("header, nav, footer, .page-intro, .lower-note").forEach((el) => {
+    el.inert = active;
+  });
   $("#creator-controls").hidden = active;
   $(".workspace").classList.toggle("playing", active);
   $("#maze-stage").classList.toggle("is-playing", active);
@@ -256,22 +286,73 @@ function setPlayUI(active) {
   $("#hint").textContent = "Show solution";
   $("#run-mode").textContent = state.practice ? "Practice" : "Ranked";
   $("#play-instructions").textContent =
-    "Drag from the peach dot, swipe a direction, or use arrow keys.";
+    state.input === "draw"
+      ? "Draw along passages. Continue from your trail or tap the next cell."
+      : "Swipe anywhere to move one step. Arrow keys work too.";
 }
-async function start() {
-  if (state.busy || state.playing) return;
+let savedScroll = 0,
+  expectedFullscreenExit = false;
+function orientationMatches() {
+  return (
+    !matchMedia("(pointer: coarse)").matches ||
+    (innerWidth > innerHeight ? "landscape" : "portrait") ===
+      state.layout.orientation
+  );
+}
+function updateOrientation() {
+  state.rotationBlocked = state.gameOpen && !orientationMatches();
+  $("#rotate-prompt").hidden = !state.rotationBlocked;
+  $("#rotate-copy").textContent =
+    `Turn your device to ${state.layout.orientation}.`;
+  $("#ready-yes").disabled = state.rotationBlocked || state.busy;
+  $("#ready-rotate").hidden = !state.rotationBlocked;
+  $("#ready-rotate").textContent = $("#rotate-copy").textContent;
+  if (state.rotationBlocked) pointer = null;
+}
+function start() {
+  if (state.busy || state.gameOpen) return;
+  savedScroll = scrollY;
+  state.generation++;
+  state.gameOpen = true;
+  state.paused = false;
+  state.path = [state.maze.start];
+  state.result = null;
+  state.solution = false;
+  setPlayUI(true);
+  draw();
+  $("#timer").textContent = "00:00.0";
+  $("#moves").textContent = "0";
+  updateOrientation();
+  $("#ready-dialog").showModal();
+  document.documentElement
+    .requestFullscreen?.()
+    .then(() => {
+      if (!state.gameOpen && document.fullscreenElement)
+        document.exitFullscreen().catch(() => {});
+    })
+    .catch(() => {});
+}
+async function begin() {
+  if (state.busy || state.playing || state.rotationBlocked || !state.gameOpen)
+    return;
+  const generation = state.generation;
   state.busy = true;
+  $("#ready-yes").disabled = true;
   $("#play").disabled = true;
   try {
     const run = await api("runs", { recipe: state.recipe });
+    if (generation !== state.generation) return;
     state.run = run.id;
     state.practice = false;
   } catch (error) {
+    if (generation !== state.generation) return;
     state.run = null;
     state.practice = true;
     toast(error.message + " Starting an unranked practice run.");
   }
+  if (!state.gameOpen || generation !== state.generation) return;
   state.busy = false;
+  $("#ready-dialog").close();
   $("#play").disabled = false;
   state.playing = true;
   state.result = null;
@@ -290,6 +371,15 @@ async function start() {
   }, 100);
 }
 function stop() {
+  state.generation++;
+  $("#play").disabled = false;
+  state.gameOpen = false;
+  state.paused = false;
+  state.rotationBlocked = false;
+  pointer = null;
+  $("#ready-dialog").close();
+  $("#pause-dialog").close();
+  $("#rotate-prompt").hidden = true;
   state.playing = false;
   state.busy = false;
   clearInterval(tick);
@@ -299,9 +389,21 @@ function stop() {
   setPlayUI(false);
   draw();
   $("#board-status").textContent = "READY TO WANDER";
+  if (document.fullscreenElement) {
+    expectedFullscreenExit = true;
+    document.exitFullscreen().catch(() => {});
+  }
+  window.scrollTo(0, savedScroll);
 }
 function move(id) {
-  if (!state.playing || state.busy || id < 0 || id === state.path.at(-1))
+  if (
+    !state.playing ||
+    state.paused ||
+    state.rotationBlocked ||
+    state.busy ||
+    id < 0 ||
+    id === state.path.at(-1)
+  )
     return;
   if (!state.maze.passages[state.path.at(-1)].includes(id)) return;
   state.path.push(id);
@@ -316,6 +418,7 @@ function move(id) {
 }
 async function finish() {
   if (state.busy) return;
+  const generation = state.generation;
   state.busy = true;
   state.playing = false;
   clearInterval(tick);
@@ -332,8 +435,11 @@ async function finish() {
   };
   if (state.run && !state.practice) {
     try {
-      state.result = await api("finish", { id: state.run, path: state.path });
+      const result = await api("finish", { id: state.run, path: state.path });
+      if (generation !== state.generation) return;
+      state.result = result;
     } catch (error) {
+      if (generation !== state.generation) return;
       toast(error.message + " Your result is saved as practice.");
       state.practice = true;
     }
@@ -378,7 +484,6 @@ async function finish() {
     elapsed: state.result.elapsed,
     moves,
   });
-  setPlayUI(false);
   draw();
   $("#result-dialog").showModal();
 }
@@ -390,22 +495,43 @@ function coordinate(event) {
   return { x: point.x, y: point.y };
 }
 $("#maze-stage").addEventListener("pointerdown", (event) => {
-  if (!state.playing || state.busy || !event.isPrimary) return;
+  if (
+    !state.playing ||
+    state.paused ||
+    state.rotationBlocked ||
+    state.busy ||
+    !event.isPrimary
+  )
+    return;
   event.preventDefault();
   $("#maze-stage").setPointerCapture(event.pointerId);
   const p = coordinate(event),
-    c = state.maze.cells[state.path.at(-1)];
+    id = pointFor(state.maze, p.x, p.y),
+    previous = state.path.lastIndexOf(id);
+  if (state.input === "draw" && id >= 0) {
+    if (previous >= 0) {
+      const backtrack = state.path.slice(previous, -1).reverse();
+      for (const step of backtrack) move(step);
+    } else move(id);
+  }
   pointer = {
     id: event.pointerId,
     x: event.clientX,
     y: event.clientY,
     last: p,
-    trace: Math.hypot(p.x - c.x, p.y - c.y) < 0.8,
+    trace: state.input === "draw" && id >= 0,
     used: false,
   };
 });
 $("#maze-stage").addEventListener("pointermove", (event) => {
-  if (!pointer || pointer.id !== event.pointerId || !state.playing) return;
+  if (
+    !pointer ||
+    pointer.id !== event.pointerId ||
+    !state.playing ||
+    state.paused ||
+    state.rotationBlocked
+  )
+    return;
   event.preventDefault();
   const p = coordinate(event);
   if (pointer.trace) {
@@ -454,7 +580,7 @@ $("#maze-stage").addEventListener("keydown", (event) => {
     w: [0, -1],
     s: [0, 1],
   }[event.key];
-  if (direction && state.playing) {
+  if (direction && state.playing && !state.paused && !state.rotationBlocked) {
     event.preventDefault();
     move(directional(state.maze, state.path.at(-1), ...direction));
   }
@@ -690,7 +816,7 @@ for (const key of ["shape", "size", "level"])
 for (const key of ["paper", "orientation"])
   $$(`button[data-${key}]`).forEach((button) =>
     button.addEventListener("click", () => {
-      if (state.playing || state.busy) return;
+      if (state.gameOpen || state.busy) return;
       state.layout = paperLayout({
         ...state.layout,
         [key]: button.dataset[key],
@@ -750,6 +876,68 @@ $("#save").addEventListener("click", () => {
   }
 });
 $("#play").addEventListener("click", start);
+$("#ready-yes").addEventListener("click", begin);
+$("#ready-stop").addEventListener("click", stop);
+$("#rotate-stop").addEventListener("click", stop);
+window.addEventListener(
+  "wheel",
+  (event) => {
+    if (state.gameOpen) event.preventDefault();
+  },
+  { passive: false },
+);
+document.addEventListener("fullscreenchange", () => {
+  if (!document.fullscreenElement) {
+    if (expectedFullscreenExit) expectedFullscreenExit = false;
+    else if (state.gameOpen) stop();
+  }
+});
+$("#ready-dialog").addEventListener("cancel", (event) => {
+  event.preventDefault();
+  stop();
+});
+$("#pause").addEventListener("click", () => {
+  if (!state.playing || state.busy) return;
+  state.paused = true;
+  pointer = null;
+  $("#pause-dialog").showModal();
+});
+$("#resume").addEventListener("click", () => {
+  state.paused = false;
+  $("#pause-dialog").close();
+  $("#maze-stage").focus({ preventScroll: true });
+});
+$("#pause-dialog").addEventListener("cancel", (event) => {
+  event.preventDefault();
+  $("#resume").click();
+});
+for (const id of ["pause-stop", "pause-restart"])
+  $("#" + id).addEventListener("click", () => {
+    stop();
+    if (id === "pause-restart") start();
+  });
+$$("[data-input]").forEach((button) =>
+  button.addEventListener("click", () => {
+    state.input = button.dataset.input;
+    pointer = null;
+    $$("[data-input]").forEach((item) =>
+      item.setAttribute("aria-pressed", String(item === button)),
+    );
+    $("#play-instructions").textContent =
+      state.input === "draw"
+        ? "Draw along passages. Continue from your trail or tap the next cell."
+        : "Swipe anywhere to move one step. Arrow keys work too.";
+  }),
+);
+window.addEventListener("resize", () => {
+  if (state.gameOpen) {
+    updateOrientation();
+    draw();
+  }
+});
+$("#result-dialog").addEventListener("close", () => {
+  if (state.gameOpen && !state.playing && !$("#ready-dialog").open) stop();
+});
 $("#exit-play").addEventListener("click", stop);
 $("#restart").addEventListener("click", () => {
   stop();
@@ -769,6 +957,7 @@ $("#export").addEventListener("click", () => $("#export-dialog").showModal());
 $("#share").addEventListener("click", share);
 $("#share-result").addEventListener("click", () => {
   $("#result-dialog").close();
+  stop();
   share();
 });
 $$("[data-close]").forEach((button) =>
@@ -808,7 +997,7 @@ $("#copy-link").addEventListener("click", async () => {
   }
 });
 $("#dismiss-challenge").addEventListener("click", () => {
-  if (state.playing || state.busy) return;
+  if (state.gameOpen || state.busy) return;
   state.challenge = null;
   load(state.recipe);
 });
@@ -847,6 +1036,7 @@ $("#name-form").addEventListener("submit", async (event) => {
 });
 $("#result-leaderboard").addEventListener("click", () => {
   $("#result-dialog").close();
+  stop();
   tab("leaderboard");
 });
 $("#play-again").addEventListener("click", () => {

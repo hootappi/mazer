@@ -66,3 +66,7 @@ Mazer v1 is live at https://mazer.lab.hootappi.com and published in the public h
 ## Physical sizing refinement
 
 Generate v2 boards from the paper’s usable area with fixed 14/10/7 mm cell spacing. Preserve v1 links, fixtures and stored scores. Include physical paper settings in shares, saves and ranking identity; verify growth across all paper sizes and real SVG/print scaling before deployment.
+
+## Immersive gameplay refinement
+
+Lock Play to the viewport with native fullscreen when supported, readiness before timing, orientation guidance for touch devices, a floating timer, pause/restart/stop controls and results over the board. Improve drawing with adjacent taps and continuing from the visited trail; retain Swipe. Keep ranking elapsed-time rules and server path validation unchanged. The readiness step provides a future place for sensor calibration, without enabling sensors now.

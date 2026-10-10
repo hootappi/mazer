@@ -1,5 +1,16 @@
 import { readFile } from "node:fs/promises";
 import { test, expect } from "@playwright/test";
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    window.nativeRequestFullscreen = Element.prototype.requestFullscreen;
+    Element.prototype.requestFullscreen = undefined;
+  });
+});
+async function play(page) {
+  await page.locator("#play").click();
+  await page.locator("#ready-yes").click();
+  await expect(page.locator("#ready-dialog")).not.toBeVisible();
+}
 async function details(page) {
   return page.evaluate(async () => {
     const { decode, generate } = await import("/src/maze.js");
@@ -98,7 +109,7 @@ test("trace actual route, submit a name and challenge the same leaderboard board
       info.project.name +
       "&shape=square&size=small&level=easy",
   );
-  await page.locator("#play").click();
+  await play(page);
   await expect(page.locator("#run-mode")).toHaveText("Ranked");
   await solveWithPointer(page);
   await expect(page.locator("#result-dialog")).toBeVisible();
@@ -119,11 +130,13 @@ test("trace actual route, submit a name and challenge the same leaderboard board
 });
 test("round trace works and hints make a run unranked", async ({ page }) => {
   await page.goto("/?v=1&seed=ROUND&shape=round&size=small&level=easy");
-  await page.locator("#play").click();
+  await play(page);
   await solveWithPointer(page);
   await expect(page.locator("#result-dialog")).toBeVisible();
   await expect(page.locator("#result-status")).toContainText("verified");
   await page.locator("#play-again").click();
+  await page.locator("#ready-yes").click();
+  await expect(page.locator("#ready-dialog")).not.toBeVisible();
   await page.locator("#hint").click();
   await expect(page.locator("#run-mode")).toHaveText("Practice");
   await page.locator("#exit-play").click();
@@ -133,7 +146,7 @@ test("keyboard moves, swipe moves and offline practice remain usable", async ({
   page,
 }) => {
   await page.goto("/?v=1&seed=KEYBOARD&shape=square&size=small&level=easy");
-  await page.locator("#play").click();
+  await play(page);
   const maze = await details(page);
   const a = maze.cells[maze.solution[0]],
     b = maze.cells[maze.solution[1]],
@@ -142,7 +155,7 @@ test("keyboard moves, swipe moves and offline practice remain usable", async ({
   await expect(page.locator("#moves")).toHaveText("1");
   await page.locator("#exit-play").click();
   await page.route("**/api/runs", (route) => route.abort());
-  await page.locator("#play").click();
+  await play(page);
   await expect(page.locator("#run-mode")).toHaveText("Practice");
   await page.locator("#exit-play").click();
 });
@@ -155,7 +168,7 @@ test("actual touch tracing crosses passages and directional swipes move one step
     "Touch input applies to phone and iPad projects.",
   );
   await page.goto("/?v=1&seed=TOUCH&shape=square&size=small&level=easy");
-  await page.locator("#play").click();
+  await play(page);
   const maze = await details(page),
     session = await page.context().newCDPSession(page);
   const coords = await page.evaluate(
@@ -227,7 +240,7 @@ test("service worker restores creation offline and falls back to practice", asyn
     await expect(page.locator("#maze-stage > svg")).toBeVisible();
     await page.locator("#generate").click();
     await expect(page.locator("#seed")).not.toHaveValue("OFFLINE");
-    await page.locator("#play").click();
+    await play(page);
     await expect(page.locator("#run-mode")).toHaveText("Practice");
   } finally {
     await context.close();
@@ -425,7 +438,7 @@ test("paper size adds cells with constant millimetre passage widths and v2 ranke
   await expect(page.locator("#passage-note")).toContainText("10 mm passages");
   await page.locator('button[data-paper="A6"]').click();
   expect(await measure()).toEqual(small);
-  await page.locator("#play").click();
+  await play(page);
   await solveWithPointer(page);
   await expect(page.locator("#result-dialog")).toBeVisible();
   await expect(page.locator("#result-status")).toContainText("verified");
@@ -443,4 +456,146 @@ test("paper size adds cells with constant millimetre passage widths and v2 ranke
   expect(new URL(page.url()).searchParams.get("v")).toBe("2");
   expect(new URL(page.url()).searchParams.get("paper")).toBe("A6");
   expect(await measure()).toEqual(small);
+});
+
+test("immersive readiness, pause, trail drawing, restart and stop keep the page locked", async ({
+  page,
+}, info) => {
+  await page.goto("/?v=1&seed=IMMERSIVE&shape=square&size=small&level=easy");
+  let starts = 0;
+  page.on("request", (req) => {
+    if (req.url().endsWith("/api/runs")) starts++;
+  });
+  await page.locator("#play").click();
+  await expect(page.locator("#ready-dialog")).toBeVisible();
+  await page.waitForTimeout(350);
+  await expect(page.locator("#timer")).toHaveText("00:00.0");
+  expect(starts).toBe(0);
+  expect(
+    await page.locator(".maze-panel").evaluate((el) => {
+      const b = el.getBoundingClientRect();
+      return (
+        b.x === 0 &&
+        b.y === 0 &&
+        Math.abs(b.width - innerWidth) < 1 &&
+        Math.abs(b.height - innerHeight) < 1
+      );
+    }),
+  ).toBeTruthy();
+  await page.locator("#ready-yes").click();
+  await expect(page.locator("#ready-dialog")).not.toBeVisible();
+  expect(starts).toBe(1);
+  const scroll = await page.evaluate(() => scrollY);
+  await page.mouse.wheel(0, 500);
+  expect(await page.evaluate(() => scrollY)).toBe(scroll);
+  await page.locator("#pause").click();
+  await expect(page.locator("#pause-dialog")).toBeVisible();
+  await page.evaluate(() =>
+    document
+      .querySelector("#maze-stage")
+      .dispatchEvent(
+        new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }),
+      ),
+  );
+  await expect(page.locator("#moves")).toHaveText("0");
+  await page.locator("#resume").click();
+  const maze = await details(page);
+  const coords = await page.evaluate(
+    (cells) => {
+      const m = document
+        .querySelector("#maze-stage svg[data-maze-art]")
+        .getScreenCTM();
+      return cells.map((c) => {
+        const p = new DOMPoint(c.x, c.y).matrixTransform(m);
+        return { x: p.x, y: p.y };
+      });
+    },
+    maze.solution.slice(0, 4).map((id) => maze.cells[id]),
+  );
+  // Tap the next cell, then draw from the earlier trail: legal backtracking is counted.
+  await page.mouse.click(coords[1].x, coords[1].y);
+  await expect(page.locator("#moves")).toHaveText("1");
+  await page.mouse.move(coords[0].x, coords[0].y);
+  await page.mouse.down();
+  for (const p of coords.slice(1))
+    await page.mouse.move(p.x, p.y, { steps: 3 });
+  await page.mouse.up();
+  await expect(page.locator("#moves")).toHaveText("5");
+  await page.screenshot({
+    path: `test-results/${info.project.name}-immersive.png`,
+  });
+  await page.locator("#restart").click();
+  await expect(page.locator("#ready-dialog")).toBeVisible();
+  await expect(page.locator("#timer")).toHaveText("00:00.0");
+  await page.locator("#ready-stop").click();
+  await expect(page.locator("#creator-controls")).toBeVisible();
+  expect(
+    await page
+      .locator("body")
+      .evaluate((el) => el.classList.contains("game-mode")),
+  ).toBeFalsy();
+});
+
+test("phone orientation prompts gate readiness and block input after rotation", async ({
+  page,
+}, info) => {
+  test.skip(
+    info.project.name === "desktop",
+    "Rotation guidance applies to touch devices.",
+  );
+  await page.goto(
+    "/?v=2&seed=ROTATE&shape=landscape&size=small&level=easy&paper=A6&orientation=landscape",
+  );
+  await page.locator("#play").click();
+  await expect(page.locator("#ready-rotate")).toHaveText(
+    "Turn your device to landscape.",
+  );
+  await expect(page.locator("#ready-yes")).toBeDisabled();
+  await page.setViewportSize({ width: 844, height: 390 });
+  await expect(page.locator("#ready-yes")).toBeEnabled();
+  await page.locator("#ready-yes").click();
+  await expect(page.locator("#ready-dialog")).not.toBeVisible();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.locator("#rotate-prompt")).toBeVisible();
+  await page.evaluate(() =>
+    document
+      .querySelector("#maze-stage")
+      .dispatchEvent(
+        new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }),
+      ),
+  );
+  await expect(page.locator("#moves")).toHaveText("0");
+  await page.locator("#rotate-stop").click();
+  await page.locator('button[data-orientation="portrait"]').click();
+  await page.setViewportSize({ width: 844, height: 390 });
+  await page.locator("#play").click();
+  await expect(page.locator("#ready-rotate")).toHaveText(
+    "Turn your device to portrait.",
+  );
+  await page.locator("#ready-stop").click();
+});
+
+test("native fullscreen can restart and exit without cancelling the next ready step", async ({
+  page,
+}, info) => {
+  test.skip(
+    info.project.name !== "desktop",
+    "Native fullscreen integration is checked on desktop Chrome.",
+  );
+  await page.goto("/?v=1&seed=FULLSCREEN&shape=square&size=small&level=easy");
+  await page.evaluate(() => {
+    Element.prototype.requestFullscreen = window.nativeRequestFullscreen;
+  });
+  await page.locator("#play").click();
+  await expect(page.locator("#ready-dialog")).toBeVisible();
+  await page.waitForFunction(() => !!document.fullscreenElement);
+  await page.locator("#ready-yes").click();
+  await expect(page.locator("#ready-dialog")).not.toBeVisible();
+  await page.locator("#restart").click();
+  await expect(page.locator("#ready-dialog")).toBeVisible();
+  await page.waitForTimeout(300);
+  await expect(page.locator("#ready-dialog")).toBeVisible();
+  await page.locator("#ready-stop").click();
+  await page.waitForFunction(() => !document.fullscreenElement);
+  await expect(page.locator("#creator-controls")).toBeVisible();
 });

@@ -1414,3 +1414,151 @@ dialog label {
     letter-spacing: 1px;
   }
 }
+
+/* Immersive gameplay keeps the board still, including browsers without Fullscreen API. */
+html:has(body.game-mode) {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+body.game-mode {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+body.game-mode .maze-panel {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: var(--paper);
+  border-radius: 0;
+  padding: 0;
+  touch-action: none;
+}
+body.game-mode .board-topline {
+  display: none;
+}
+body.game-mode .play-stats {
+  position: absolute;
+  top: max(12px, env(safe-area-inset-top));
+  left: max(16px, env(safe-area-inset-left));
+  right: max(16px, env(safe-area-inset-right));
+  margin: 0;
+  padding: 10px 14px;
+  display: flex;
+  gap: 25px;
+  justify-content: flex-start;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  z-index: 2;
+  width: fit-content;
+}
+body.game-mode .play-stats span {
+  font-size: 9px;
+}
+body.game-mode .play-stats strong {
+  font-size: 18px;
+}
+body.game-mode .paper-preview {
+  position: absolute;
+  inset: calc(78px + env(safe-area-inset-top))
+    max(12px, env(safe-area-inset-right))
+    calc(112px + env(safe-area-inset-bottom))
+    max(12px, env(safe-area-inset-left));
+  padding: 0;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+body.game-mode .workspace.playing .maze-stage {
+  max-width: none;
+  margin: 0;
+  flex: none;
+  touch-action: none;
+  box-shadow: none;
+  cursor: crosshair;
+}
+body.game-mode .maze-stage > svg {
+  box-shadow: none;
+  border-radius: 0;
+  pointer-events: none;
+}
+body.game-mode .playing-actions {
+  position: absolute;
+  bottom: max(8px, env(safe-area-inset-bottom));
+  left: 12px;
+  right: 12px;
+  margin: 0;
+  padding: 6px 0;
+  border: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  align-items: center;
+  justify-content: center;
+}
+body.game-mode .playing-actions > p {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 11px;
+}
+body.game-mode .play-buttons {
+  margin: 0;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+body.game-mode .play-buttons button,
+.input-options button {
+  min-height: 38px;
+  padding: 8px 12px;
+  font-size: 11px;
+}
+.input-options {
+  display: flex;
+  gap: 4px;
+}
+.input-options button[aria-pressed="true"] {
+  background: var(--accent);
+}
+.rotate-prompt {
+  position: fixed;
+  inset: 0;
+  z-index: 110;
+  background: var(--paper);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 28px;
+  text-align: center;
+}
+.rotate-prompt > span {
+  font-size: 64px;
+}
+.rotate-prompt p {
+  color: var(--muted);
+}
+#ready-dialog button,
+#pause-dialog button {
+  margin-top: 12px;
+}
+#ready-rotate {
+  color: var(--ink);
+  font-weight: bold;
+}
+@media (max-height: 500px) {
+  body.game-mode .play-stats {
+    padding: 5px 10px;
+    top: max(5px, env(safe-area-inset-top));
+  }
+  body.game-mode .paper-preview {
+    top: calc(60px + env(safe-area-inset-top));
+    bottom: calc(85px + env(safe-area-inset-bottom));
+  }
+  body.game-mode .playing-actions > p {
+    display: none;
+  }
+}

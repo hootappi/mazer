@@ -6,7 +6,8 @@ Create a reproducible maze, find your way from A to B, enter your name on the le
 
 - Choose paper size A6–A2, portrait or landscape, then Square, Rectangle or Round. The preview shows the printable sheet with details in its bottom-left corner.
 - Larger paper generates more maze cells at a fixed physical spacing. Small/Medium/Large use 14/10/7 mm passages, with three levels of relative route difficulty. Print at actual size (100%) to preserve spacing.
-- Drag to trace, swipe for a step, or use arrow keys/WASD.
+- Play opens a locked full-screen board, with an “Are you ready?” step before timing begins. Touch devices prompt you to turn to the chosen paper orientation.
+- Draw through passages, tap an adjacent cell, continue from your existing trail, switch to Swipe, or use arrow keys/WASD. Pause, restart and stop controls stay on screen. Pausing blocks movement; ranked time continues.
 - Server-validated routes, elapsed time and scores. Names are entered after finishing; no signup.
 - Click any leaderboard entry to take on that player's maze and score.
 - Original v1 links and saved mazes remain reproducible. New v2 recipes include paper size and orientation.
@@ -39,7 +40,7 @@ On a Mac where system Node is broken, an existing Codex bundled Node 24 runtime 
 
 ## Playing and ranking
 
-The timer starts when a ranked run is issued and continues while the tab is hidden. Drag from the peach dot through connected corridors, or swipe anywhere else on the board to move one step. Arrow keys/WASD move along an available passage in that direction, including polar passages on a round maze.
+The timer starts when a ranked run is issued and continues while the tab is hidden. Draw through connected corridors, tap the next connected cell, or pick up anywhere on your already drawn trail. Returning to earlier trail cells counts the actual legal backtracking moves. Switch to Swipe for directional steps anywhere on the board. Arrow keys/WASD move along an available passage in that direction, including polar passages on a round maze.
 
 The server validates the complete route, calculates the result and allows one name submission for that result. Revealing the solution makes the run practice. Sessions last one hour and are lost on restart. Posted scores persist.
 

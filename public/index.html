@@ -212,10 +212,15 @@
               <p id="play-instructions">
                 Drag from the peach dot, swipe a direction, or use arrow keys.
               </p>
+              <div class="input-options" aria-label="Movement mode">
+                <button data-input="draw" aria-pressed="true">Draw</button>
+                <button data-input="swipe" aria-pressed="false">Swipe</button>
+              </div>
               <div class="play-buttons">
-                <button id="hint">Show solution</button
+                <button id="pause">Pause</button
+                ><button id="hint">Show solution</button
                 ><button id="restart">Restart</button
-                ><button id="exit-play">Back to creator</button>
+                ><button id="exit-play">Stop</button>
               </div>
             </div>
           </section>
@@ -292,6 +297,34 @@
       <p class="field-note">
         Print uses black ink on white paper. Manufacturing comes later.
       </p>
+    </dialog>
+    <div id="rotate-prompt" class="rotate-prompt" hidden role="status">
+      <span aria-hidden="true">↻</span>
+      <h2 id="rotate-copy">Turn your device.</h2>
+      <p>Your maze will be ready when you turn.</p>
+      <button id="rotate-stop">Stop</button>
+    </div>
+    <dialog id="ready-dialog" aria-labelledby="ready-title">
+      <p class="eyebrow">YOUR NEXT WANDER</p>
+      <h2 id="ready-title">Are you <em>ready?</em></h2>
+      <p class="dialog-copy">
+        Draw through the passages from A to B. Lift your finger and continue
+        from your trail. The timer starts when you say YES.
+      </p>
+      <p id="ready-rotate" hidden></p>
+      <button id="ready-yes" class="primary">YES ↗</button>
+      <button id="ready-stop">Back to creator</button>
+    </dialog>
+    <dialog id="pause-dialog" aria-labelledby="pause-title">
+      <p class="eyebrow">TAKE A BREATH</p>
+      <h2 id="pause-title">Game <em>paused.</em></h2>
+      <p class="dialog-copy">
+        Movement is paused. The timer keeps running, so every ranked wander
+        follows the same rules.
+      </p>
+      <button id="resume" class="primary">Resume ↗</button>
+      <button id="pause-restart">Restart</button
+      ><button id="pause-stop">Stop</button>
     </dialog>
     <dialog id="result-dialog">
       <div class="dialog-heading">
