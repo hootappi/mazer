@@ -89,34 +89,56 @@
               <span class="eyebrow">YOUR NEXT DETOUR</span
               ><span class="tiny-number">001</span>
             </div>
-            <fieldset>
-              <legend>01 <span>Choose a shape</span></legend>
+            <fieldset class="paper-control">
+              <legend>01 <span>Choose paper size</span></legend>
+              <div class="segmented" id="paper-control">
+                <button data-paper="A6" aria-pressed="false">A6</button>
+                <button data-paper="A5" aria-pressed="false">A5</button>
+                <button data-paper="A4" aria-pressed="true">A4</button>
+                <button data-paper="A3" aria-pressed="false">A3</button>
+                <button data-paper="A2" aria-pressed="false">A2</button>
+              </div>
+              <p class="field-note" id="paper-dimensions">210 × 297 mm</p>
+            </fieldset>
+            <fieldset class="orientation-control">
+              <legend>02 <span>Choose orientation</span></legend>
+              <div class="segmented" id="orientation-control">
+                <button data-orientation="portrait" aria-pressed="true">
+                  Portrait
+                </button>
+                <button data-orientation="landscape" aria-pressed="false">
+                  Landscape
+                </button>
+              </div>
+            </fieldset>
+            <fieldset class="shape-control">
+              <legend>03 <span>Choose a shape</span></legend>
               <div class="shape-grid">
                 <button data-shape="square" aria-pressed="true">
-                  <span class="shape-symbol square"></span>Square</button
-                ><button data-shape="portrait" aria-pressed="false">
-                  <span class="shape-symbol portrait"></span>Portrait</button
-                ><button data-shape="landscape" aria-pressed="false">
-                  <span class="shape-symbol landscape"></span>Landscape</button
-                ><button data-shape="round" aria-pressed="false">
+                  <span class="shape-symbol square"></span>Square
+                </button>
+                <button data-shape="rectangle" aria-pressed="false">
+                  <span class="shape-symbol landscape"></span>Rectangle
+                </button>
+                <button data-shape="round" aria-pressed="false">
                   <span class="shape-symbol round"></span>Round
                 </button>
               </div>
             </fieldset>
             <fieldset>
-              <legend>02 <span>Make room to wander</span></legend>
+              <legend>04 <span>Make room to wander</span></legend>
               <div class="segmented" id="size-control">
-                <button data-size="small" aria-pressed="false">Small</button
-                ><button data-size="medium" aria-pressed="true">Medium</button
-                ><button data-size="large" aria-pressed="false">Large</button>
+                <button data-size="small" aria-pressed="false">Small</button>
+                <button data-size="medium" aria-pressed="true">Medium</button>
+                <button data-size="large" aria-pressed="false">Large</button>
               </div>
             </fieldset>
             <fieldset>
-              <legend>03 <span>How lost do you want to get?</span></legend>
+              <legend>05 <span>How do you want to get lost?</span></legend>
               <div class="segmented" id="level-control">
-                <button data-level="easy" aria-pressed="false">Easy</button
-                ><button data-level="steady" aria-pressed="true">Steady</button
-                ><button data-level="hard" aria-pressed="false">Hard</button>
+                <button data-level="easy" aria-pressed="false">Easy</button>
+                <button data-level="steady" aria-pressed="true">Steady</button>
+                <button data-level="hard" aria-pressed="false">Hard</button>
               </div>
               <p class="field-note" id="difficulty-note">
                 A few wrong turns. Just enough wonder.
@@ -150,7 +172,7 @@
           </aside>
           <section class="maze-panel" aria-label="Maze preview and gameplay">
             <div class="board-topline">
-              <span id="maze-label">MAZE / </span>
+              <span class="eyebrow" id="paper-summary">A4 / PORTRAIT</span>
               <div>
                 <span class="status-dot"></span
                 ><span id="board-status">READY TO WANDER</span>
@@ -161,28 +183,14 @@
               <div><span>MOVES</span><strong id="moves">0</strong></div>
               <div><span>MODE</span><strong id="run-mode">Ranked</strong></div>
             </div>
-            <div
-              id="maze-stage"
-              class="maze-stage"
-              tabindex="0"
-              role="group"
-              aria-label="Maze. Start playing, then drag through passages or use arrow keys."
-            ></div>
-            <div class="board-caption">
-              <span><i class="start-dot"></i>A little beginning</span
-              ><span>A <span class="caption-line">→</span> B</span
-              ><span>A way out<i class="finish-dot"></i></span>
-            </div>
-            <div id="maze-stats" class="maze-stats">
-              <div>
-                <span>SHAPE</span><strong id="stat-shape">Square</strong>
-              </div>
-              <div>
-                <span>SIZE</span><strong id="stat-size">12 × 12</strong>
-              </div>
-              <div>
-                <span>DIFFICULTY</span><strong id="stat-level">Steady</strong>
-              </div>
+            <div class="paper-preview">
+              <div
+                id="maze-stage"
+                class="maze-stage"
+                tabindex="0"
+                role="group"
+                aria-label="Paper preview. Start playing, then drag through passages or use arrow keys."
+              ></div>
             </div>
             <div class="board-actions" id="preview-actions">
               <button
@@ -192,7 +200,7 @@
               >
                 ♡ <span>Keep</span></button
               ><button id="play" class="primary play-button">
-                Let’s get lost <span>↗</span></button
+                PLAY <span>↗</span></button
               ><button id="export" class="quiet-button">
                 ↓ <span>Export</span></button
               ><button id="share" class="quiet-button">
@@ -277,10 +285,7 @@
         </button>
       </div>
       <div class="print-options">
-        <label for="paper-size">Print size</label
-        ><select id="paper-size">
-          <option>A4</option>
-          <option>A3</option></select
+        <span id="print-summary">A4 · Portrait</span
         ><button id="print-maze" class="primary">Print / Save PDF ↗</button>
       </div>
       <p class="field-note">

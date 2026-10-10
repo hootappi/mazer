@@ -1,3 +1,4 @@
+import { paperDimensions } from "./paper.js";
 const NS = "http://www.w3.org/2000/svg";
 export function element(tag, attrs = {}) {
   const el = document.createElementNS(NS, tag);
@@ -160,4 +161,98 @@ export function updateTrace(svg, maze, path) {
   const p = svg.querySelector("#player");
   p.setAttribute("cx", c.x);
   p.setAttribute("cy", c.y);
+}
+
+// The preview and every export use this same physical sheet layout.
+export function renderPaper(maze, layout, options = {}) {
+  const [width, height] = paperDimensions(layout);
+  const scale = Math.min(width, height) / 210;
+  const margin = 12 * scale,
+    header = 35 * scale,
+    footer = 35 * scale;
+  const ink = options.ink ?? "#29352c",
+    paper = options.paper ?? "#fffcf5";
+  const svg = element("svg", {
+    xmlns: NS,
+    viewBox: `0 0 ${width} ${height}`,
+    width: `${width}mm`,
+    height: `${height}mm`,
+    role: "img",
+    "aria-label": `${layout.paper} ${layout.orientation} sheet with ${maze.recipe.shape} maze`,
+    "data-paper": layout.paper,
+    "data-orientation": layout.orientation,
+  });
+  svg.append(element("rect", { width, height, fill: paper }));
+  svg.append(
+    element("rect", {
+      x: 4 * scale,
+      y: 4 * scale,
+      width: width - 8 * scale,
+      height: height - 8 * scale,
+      rx: 3 * scale,
+      fill: "none",
+      stroke: ink,
+      "stroke-opacity": 0.28,
+      "stroke-width": 0.3 * scale,
+    }),
+  );
+  function text(value, x, y, size, attrs = {}) {
+    const node = element("text", {
+      x,
+      y,
+      fill: ink,
+      "font-family": "Arial,Helvetica,sans-serif",
+      "font-size": Math.max(size * scale, 2.2),
+      ...attrs,
+    });
+    node.textContent = value;
+    svg.append(node);
+    return node;
+  }
+  text("MAZER", margin, 20 * scale, 7, {
+    "font-weight": 700,
+    "letter-spacing": 1.1 * scale,
+  });
+  text("A little lost. A lot of possibility.", margin, 27 * scale, 2.4);
+  const art = render(maze, options);
+  art.setAttribute("data-maze-art", "");
+  art.setAttribute("x", margin);
+  art.setAttribute("y", header);
+  art.setAttribute("width", width - 2 * margin);
+  art.setAttribute("height", height - header - footer);
+  svg.append(art);
+  text("Find your way from A to B.", margin, height - 26 * scale, 3);
+  const line = text("", margin, height - 19.5 * scale, 2.8);
+  const label = (value) => value[0].toUpperCase() + value.slice(1);
+  for (const [id, value] of [
+    [
+      "stat-shape",
+      ["portrait", "landscape"].includes(maze.recipe.shape)
+        ? "Rectangle"
+        : label(maze.recipe.shape),
+    ],
+    [
+      "stat-size",
+      maze.radius
+        ? `${maze.rings.length - 1} rings`
+        : `${maze.cols} × ${maze.rows}`,
+    ],
+    ["stat-level", label(maze.recipe.level)],
+  ]) {
+    if (line.childNodes.length) line.append(document.createTextNode(" · "));
+    const span = element("tspan", { id });
+    span.textContent = value;
+    line.append(span);
+  }
+  text(`MAZE / ${maze.recipe.seed}`, margin, height - 13 * scale, 2.8, {
+    id: "maze-label",
+  });
+  text(
+    `${layout.paper} · ${label(layout.orientation)} · ${width} × ${height} mm`,
+    margin,
+    height - 6.5 * scale,
+    2.5,
+    { "fill-opacity": 0.7 },
+  );
+  return svg;
 }

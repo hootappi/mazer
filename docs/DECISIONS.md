@@ -21,5 +21,12 @@ Implementation choices:
 - Run sessions and unposted results expire after one hour and live in memory. A server restart invalidates them. Posted scores persist in SQLite with WAL enabled.
 - Names are normalized and limited to 24 characters. Rate limits apply per IP; the trusted public proxy must overwrite X-Forwarded-For. Shared networks share a limit. Tailnet preview disables proxy trust.
 - Revealing the solution or losing API access makes a run unranked. Offline score submission is not queued.
-- Print uses the browser's print/PDF engine, A4/A3, black ink on white paper. SVG/PNG exports can include a solution. JSON contains the canonical recipe. Manufacturing-ready geometry is not claimed.
+- Print uses the browser's print/PDF engine at the selected A6–A2 size and orientation, with black ink on white paper. Preview, SVG, PNG and print use the same sheet renderer. SVG carries physical millimetre dimensions; PNG uses a 2,400 px long edge. JSON contains the canonical recipe and presentation layout. Manufacturing-ready geometry is not claimed.
 - Warm paper is the main theme. After hours and Blue hour are small color alternatives, not separate game systems.
+
+Paper workflow update, 10 October 2026:
+
+- Controls are paper size (A6, A5, A4, A3, A2), orientation, shape, maze size and difficulty, in that order. The action label is PLAY.
+- Paper size/orientation are presentation settings, carried by share links and saved collections. They do not change the v1 recipe or score identity. No database migration is required. Existing links and saved recipes still load.
+- UI shape choices are Square, Rectangle and Round. A rectangle follows the chosen orientation through the existing portrait/landscape v1 generator variants. Square and round boards retain their geometry when the paper orientation changes.
+- The sheet displays title, maze and small bottom-left details. Keep, PLAY, Export and Share live below the sheet.

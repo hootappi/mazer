@@ -10,7 +10,7 @@ async function solveWithPointer(page) {
   const maze = await details(page);
   const coords = await page.evaluate(
     (path) => {
-      const svg = document.querySelector("#maze-stage svg"),
+      const svg = document.querySelector("#maze-stage svg[data-maze-art]"),
         matrix = svg.getScreenCTM();
       return path.map((c) => {
         const p = new DOMPoint(c.x, c.y).matrixTransform(matrix);
@@ -31,12 +31,12 @@ test("create shapes, keep, export, print, share and resize without overflow", as
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto("/");
-  await expect(page.locator("#maze-stage svg")).toBeVisible();
+  await expect(page.locator("#maze-stage > svg")).toBeVisible();
   await page.screenshot({
     path: `test-results/${info.project.name}-create.png`,
     fullPage: true,
   });
-  for (const shape of ["portrait", "landscape", "round", "square"]) {
+  for (const shape of ["rectangle", "round", "square"]) {
     await page.locator(`[data-shape="${shape}"]`).click();
     await expect(page.locator("#stat-shape")).toHaveText(
       shape[0].toUpperCase() + shape.slice(1),
@@ -69,9 +69,12 @@ test("create shapes, keep, export, print, share and resize without overflow", as
   }
   await page.locator("#print-maze").click();
   await page.waitForTimeout(400);
-  const print = page.frames().find((f) => f !== page.mainFrame());
-  expect(await print.locator("svg").count()).toBe(1);
-  await expect(print.locator("header")).toContainText("BROWSER");
+  const print = page
+    .frames()
+    .filter((f) => f !== page.mainFrame())
+    .at(-1);
+  expect(await print.locator("body > svg").count()).toBe(1);
+  await expect(print.locator("#maze-label")).toContainText("BROWSER");
   await page.locator('[data-close="export-dialog"]').click();
   await page.locator("#share").click();
   const link = await page.locator("#share-link").inputValue();
@@ -157,7 +160,7 @@ test("actual touch tracing crosses passages and directional swipes move one step
     session = await page.context().newCDPSession(page);
   const coords = await page.evaluate(
     (path) => {
-      const svg = document.querySelector("#maze-stage svg"),
+      const svg = document.querySelector("#maze-stage svg[data-maze-art]"),
         matrix = svg.getScreenCTM();
       return path.map((c) => {
         const p = new DOMPoint(c.x, c.y).matrixTransform(matrix);
@@ -221,7 +224,7 @@ test("service worker restores creation offline and falls back to practice", asyn
     });
     await context.setOffline(true);
     await page.reload();
-    await expect(page.locator("#maze-stage svg")).toBeVisible();
+    await expect(page.locator("#maze-stage > svg")).toBeVisible();
     await page.locator("#generate").click();
     await expect(page.locator("#seed")).not.toHaveValue("OFFLINE");
     await page.locator("#play").click();
@@ -235,7 +238,9 @@ test("portrait PNG keeps proportions and landscape print fits one A4 page", asyn
   page,
   browser,
 }, info) => {
-  await page.goto("/?v=1&seed=EXPORT&shape=portrait&size=small&level=easy");
+  await page.goto(
+    "/?v=1&seed=EXPORT&shape=portrait&size=small&level=easy&paper=A4&orientation=portrait",
+  );
   await page.locator("#export").click();
   const pending = page.waitForEvent("download");
   await page.locator("#download-png").click();
@@ -243,11 +248,14 @@ test("portrait PNG keeps proportions and landscape print fits one A4 page", asyn
   const bytes = await readFile(await file.path());
   expect(bytes.readUInt32BE(16)).toBeLessThan(bytes.readUInt32BE(20));
   await page.locator('[data-close="export-dialog"]').click();
-  await page.locator('[data-shape="landscape"]').click();
+  await page.locator('button[data-orientation="landscape"]').click();
   await page.locator("#export").click();
   await page.locator("#print-maze").click();
   await page.waitForTimeout(400);
-  const frame = page.frames().find((f) => f !== page.mainFrame()),
+  const frame = page
+      .frames()
+      .filter((f) => f !== page.mainFrame())
+      .at(-1),
     html = await frame.locator("html").evaluate((el) => el.outerHTML),
     printPage = await browser.newPage();
   try {
@@ -268,4 +276,120 @@ test("portrait PNG keeps proportions and landscape print fits one A4 page", asyn
       ),
     ).toBeTruthy();
   }
+});
+
+test("paper workflow matches preview, sharing, saved layout and physical print size", async ({
+  page,
+  browser,
+}, info) => {
+  await page.goto("/");
+  const legends = await page
+    .locator("#creator-controls legend")
+    .allTextContents();
+  expect(legends.map((text) => text.replace(/\s+/g, " ").trim())).toEqual([
+    "01 Choose paper size",
+    "02 Choose orientation",
+    "03 Choose a shape",
+    "04 Make room to wander",
+    "05 How do you want to get lost?",
+  ]);
+  await expect(page.locator("#play")).toContainText("PLAY");
+  for (const paper of ["A6", "A5", "A4", "A3", "A2"])
+    for (const orientation of ["portrait", "landscape"]) {
+      await page.locator(`button[data-paper="${paper}"]`).click();
+      await page.locator(`button[data-orientation="${orientation}"]`).click();
+      const sheet = page.locator("#maze-stage > svg");
+      await expect(sheet).toHaveAttribute("data-paper", paper);
+      await expect(sheet).toHaveAttribute("data-orientation", orientation);
+      const box = await sheet.boundingBox();
+      expect(
+        orientation === "portrait"
+          ? box.height > box.width
+          : box.width > box.height,
+      ).toBeTruthy();
+      const metadata = await page.locator("#maze-label").boundingBox();
+      expect(metadata.y).toBeGreaterThan(box.y + box.height * 0.8);
+      expect(metadata.x).toBeLessThan(box.x + box.width * 0.2);
+      const actions = await page.locator("#preview-actions").boundingBox();
+      expect(actions.y).toBeGreaterThanOrEqual(box.y + box.height);
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+      ).toBeTruthy();
+    }
+  await page.locator('[data-shape="rectangle"]').click();
+  await expect(page.locator("#stat-shape")).toHaveText("Rectangle");
+  expect(new URL(page.url()).searchParams.get("shape")).toBe("landscape");
+  await page.locator('button[data-orientation="portrait"]').click();
+  expect(new URL(page.url()).searchParams.get("shape")).toBe("portrait");
+  await page.locator('button[data-paper="A6"]').click();
+  await page.locator("#save").click();
+  await page.locator("#share").click();
+  const link = await page.locator("#share-link").inputValue();
+  await page.locator('[data-close="share-dialog"]').click();
+  await page.goto(link);
+  await expect(page.locator('button[data-paper="A6"]')).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await expect(
+    page.locator('button[data-orientation="portrait"]'),
+  ).toHaveAttribute("aria-pressed", "true");
+  await page.locator('button[data-paper="A2"]').click();
+  await page.locator('[data-tab="saved"]').click();
+  await page.locator(".saved-open").click();
+  await expect(page.locator('button[data-paper="A6"]')).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await page.screenshot({
+    path: `test-results/${info.project.name}-paper-portrait.png`,
+    fullPage: true,
+  });
+  for (const [paper, orientation] of [
+    ["A6", "portrait"],
+    ["A2", "landscape"],
+  ]) {
+    await page.locator(`button[data-paper="${paper}"]`).click();
+    await page.locator(`button[data-orientation="${orientation}"]`).click();
+    await page.locator("#export").click();
+    const pending = page.waitForEvent("download");
+    await page.locator("#download-svg").click();
+    const svgFile = await pending;
+    const svgText = await readFile(await svgFile.path(), "utf8");
+    expect(svgText).toContain('data-paper="' + paper + '"');
+    expect(svgText).toContain("MAZE /");
+    await page.locator("#print-maze").click();
+    await page.waitForTimeout(400);
+    const frame = page
+        .frames()
+        .filter((f) => f !== page.mainFrame())
+        .at(-1),
+      html = await frame.locator("html").evaluate((el) => el.outerHTML),
+      printPage = await browser.newPage();
+    try {
+      await printPage.setContent(html);
+      const pdf = await printPage.pdf({ preferCSSPageSize: true });
+      const text = pdf.toString("latin1");
+      expect((text.match(/\/Type \/Page\b/g) || []).length).toBe(1);
+      const dims = text.match(/\/MediaBox \[0 0 ([\d.]+) ([\d.]+)\]/);
+      expect(dims).not.toBeNull();
+      const expected = paper === "A6" ? [105, 148] : [594, 420];
+      // Chromium rounds paper dimensions to device pixels (up to one PDF point).
+      expect(
+        Math.abs(Number(dims[1]) - (expected[0] * 72) / 25.4),
+      ).toBeLessThan(1);
+      expect(
+        Math.abs(Number(dims[2]) - (expected[1] * 72) / 25.4),
+      ).toBeLessThan(1);
+    } finally {
+      await printPage.close();
+    }
+    await page.locator('[data-close="export-dialog"]').click();
+  }
+  await page.screenshot({
+    path: `test-results/${info.project.name}-paper-landscape.png`,
+    fullPage: true,
+  });
 });

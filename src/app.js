@@ -10,7 +10,8 @@ import {
   directional,
   score,
 } from "./maze.js";
-import { render, updateTrace } from "./render.js";
+import { render, renderPaper, updateTrace } from "./render.js";
+import { paperLayout, paperDimensions } from "./paper.js";
 const $ = (selector) => document.querySelector(selector),
   $$ = (selector) => [...document.querySelectorAll(selector)];
 const state = {
@@ -21,6 +22,7 @@ const state = {
     size: "medium",
     level: "steady",
   },
+  layout: paperLayout(),
   maze: null,
   playing: false,
   busy: false,
@@ -78,7 +80,9 @@ function collection() {
   return raw
     .flatMap((item) => {
       try {
-        return [recipe(item)];
+        return [
+          { ...recipe(item), layout: paperLayout(item.layout, item.shape) },
+        ];
       } catch {
         return [];
       }
@@ -124,27 +128,63 @@ function colors() {
     accent: css.getPropertyValue("--accent").trim(),
   };
 }
+function documentQuery(r = state.recipe, layout = state.layout) {
+  const params = new URLSearchParams(encode(r));
+  params.set("paper", layout.paper);
+  params.set("orientation", layout.orientation);
+  return params.toString();
+}
+function keptKey(item) {
+  return documentQuery(item, paperLayout(item.layout, item.shape));
+}
+function writeURL() {
+  const params = new URLSearchParams(documentQuery());
+  if (state.challenge) {
+    params.set("who", state.challenge.name);
+    params.set("target", String(state.challenge.score));
+  }
+  history.replaceState(null, "", "?" + params);
+}
 function draw() {
-  const svg = render(state.maze, {
+  const svg = renderPaper(state.maze, state.layout, {
     ...colors(),
     path: state.path,
     player: state.playing,
     solution: state.solution,
   });
-  $("#maze-stage").replaceChildren(svg);
+  const [width, height] = paperDimensions(state.layout);
+  const stage = $("#maze-stage");
+  stage.style.aspectRatio = `${width} / ${height}`;
+  stage.dataset.orientation = state.layout.orientation;
+  stage.replaceChildren(svg);
+  for (const key of ["paper", "orientation"])
+    $$(`button[data-${key}]`).forEach((button) =>
+      button.setAttribute(
+        "aria-pressed",
+        String(button.dataset[key] === state.layout[key]),
+      ),
+    );
+  $("#paper-dimensions").textContent = `${width} × ${height} mm`;
+  $("#paper-summary").textContent =
+    `${state.layout.paper} / ${state.layout.orientation.toUpperCase()}`;
+  $("#print-summary").textContent =
+    `${state.layout.paper} · ${names[state.layout.orientation]}`;
 }
 function load(r, { keepChallenge = false } = {}) {
   if (state.playing || state.busy) return;
   state.recipe = recipe(r);
+  if (r.layout) state.layout = paperLayout(r.layout, r.shape);
   state.maze = generate(state.recipe);
   state.path = [];
   state.solution = false;
   state.result = null;
   if (!keepChallenge) state.challenge = null;
   $("#seed").value = r.seed;
-  $("#maze-label").textContent = "MAZE / " + r.seed;
   for (const [attr, value] of [
-    ["shape", r.shape],
+    [
+      "shape",
+      ["portrait", "landscape"].includes(r.shape) ? "rectangle" : r.shape,
+    ],
     ["size", r.size],
     ["level", r.level],
   ])
@@ -154,11 +194,6 @@ function load(r, { keepChallenge = false } = {}) {
         String(button.dataset[attr] === value),
       ),
     );
-  $("#stat-shape").textContent = names[r.shape];
-  $("#stat-size").textContent = state.maze.radius
-    ? `${state.maze.rings.length - 1} rings · ${state.maze.cells.length} cells`
-    : `${state.maze.cols} × ${state.maze.rows}`;
-  $("#stat-level").textContent = names[r.level];
   $("#difficulty-note").textContent = {
     easy: "A shorter wander. A gentle place to start.",
     steady: "A few wrong turns. Just enough wonder.",
@@ -168,15 +203,7 @@ function load(r, { keepChallenge = false } = {}) {
   updateKeep();
   updateChallenge();
   draw();
-  const params =
-    encode(r) +
-    (state.challenge
-      ? "&who=" +
-        encodeURIComponent(state.challenge.name) +
-        "&target=" +
-        state.challenge.score
-      : "");
-  history.replaceState(null, "", "?" + params);
+  writeURL();
 }
 function updateChallenge() {
   $("#challenge-banner").hidden = !state.challenge;
@@ -187,7 +214,7 @@ function updateChallenge() {
 function updateKeep() {
   const kept = collection();
   $("#saved-count").textContent = kept.length;
-  const active = kept.some((r) => encode(r) === encode(state.recipe));
+  const active = kept.some((r) => keptKey(r) === documentQuery());
   $("#save").innerHTML = active ? "♥ <span>Kept</span>" : "♡ <span>Keep</span>";
   $("#save").setAttribute("aria-pressed", String(active));
 }
@@ -211,7 +238,6 @@ function setPlayUI(active) {
   $(".workspace").classList.toggle("playing", active);
   $("#maze-stage").classList.toggle("is-playing", active);
   $("#play-stats").hidden = !active;
-  $("#maze-stats").hidden = active;
   $("#preview-actions").hidden = active;
   $("#playing-actions").hidden = !active;
   $("#hint").textContent = "Show solution";
@@ -344,7 +370,7 @@ async function finish() {
   $("#result-dialog").showModal();
 }
 function coordinate(event) {
-  const svg = $("#maze-stage svg"),
+  const svg = $("#maze-stage svg[data-maze-art]"),
     point = new DOMPoint(event.clientX, event.clientY).matrixTransform(
       svg.getScreenCTM().inverse(),
     );
@@ -486,6 +512,10 @@ async function leaderboard() {
       row.addEventListener("click", () => {
         stop();
         state.challenge = { name: entry.name, score: entry.score };
+        state.layout = paperLayout(
+          { paper: state.layout.paper },
+          entry.recipe.shape,
+        );
         load(entry.recipe, { keepChallenge: true });
         tab("create");
         window.scrollTo({ top: 0, behavior: "smooth" });
@@ -526,7 +556,7 @@ function saved() {
       render(generate(r), colors()),
       Object.assign(document.createElement("strong"), { textContent: r.seed }),
       Object.assign(document.createElement("span"), {
-        textContent: `${names[r.shape]} · ${names[r.size]} · ${names[r.level]}`,
+        textContent: `${r.layout.paper} ${names[r.layout.orientation]} · ${names[r.shape]} · ${names[r.size]} · ${names[r.level]}`,
       }),
     );
     open.addEventListener("click", () => {
@@ -541,7 +571,7 @@ function saved() {
       if (
         localWrite(
           "mazer-kept-v1",
-          collection().filter((item) => encode(item) !== encode(r)),
+          collection().filter((item) => keptKey(item) !== keptKey(r)),
         )
       ) {
         updateKeep();
@@ -563,7 +593,7 @@ function download(blob, extension) {
   setTimeout(() => URL.revokeObjectURL(url), 10000);
 }
 function exportSVG(print = false) {
-  return render(state.maze, {
+  return renderPaper(state.maze, state.layout, {
     solution: $("#export-solution").checked,
     ...(print
       ? { paper: "#ffffff", ink: "#222222", accent: "#eeeeee" }
@@ -596,8 +626,7 @@ async function png() {
   }
 }
 function printMaze() {
-  const size = $("#paper-size").value === "A3" ? "A3" : "A4",
-    landscape = state.recipe.shape === "landscape";
+  const [width, height] = paperDimensions(state.layout);
   const frame = document.createElement("iframe");
   frame.className = "print-frame";
   frame.style.cssText = "position:fixed;width:1px;height:1px;left:-9999px;";
@@ -609,22 +638,10 @@ function printMaze() {
   );
   doc.close();
   const style = doc.createElement("style");
-  style.textContent = `@page{size:${size} ${landscape ? "landscape" : "portrait"};margin:14mm}body{font:12px Arial;color:#222;margin:0}header{display:flex;justify-content:space-between;border-bottom:1px solid #ccc;padding-bottom:8mm}h1{font-size:25px;letter-spacing:4px;margin:0}p{margin:5px 0}svg{display:block;margin:8mm auto;width:100%;height:${size === "A3" ? (landscape ? 220 : 325) : landscape ? 135 : 215}mm}footer{border-top:1px solid #ccc;padding-top:4mm;font-size:9px}`;
+  // A fraction of a millimetre avoids a second page from browser rounding.
+  style.textContent = `@page{size:${width}mm ${height}mm;margin:0}html,body{margin:0;padding:0;width:${width}mm;height:${height - 0.2}mm}svg{display:block;width:${width}mm;height:${height - 0.2}mm;break-inside:avoid}`;
   doc.head.append(style);
-  const header = doc.createElement("header"),
-    title = doc.createElement("h1");
-  title.textContent = "MAZER";
-  const info = doc.createElement("div");
-  info.textContent = `${state.recipe.seed} · ${names[state.recipe.shape]} · ${names[state.recipe.size]} · ${names[state.recipe.level]}`;
-  header.append(title, info);
-  doc.body.append(header, doc.importNode(exportSVG(true), true));
-  const footer = doc.createElement("footer");
-  footer.textContent =
-    "Find your way from A to B. · " +
-    location.origin +
-    "/?" +
-    encode(state.recipe);
-  doc.body.append(footer);
+  doc.body.append(doc.importNode(exportSVG(true), true));
   setTimeout(() => {
     frame.contentWindow.focus();
     frame.contentWindow.print();
@@ -632,7 +649,7 @@ function printMaze() {
   }, 250);
 }
 function share() {
-  const params = new URLSearchParams(encode(state.recipe));
+  const params = new URLSearchParams(documentQuery());
   if (state.result && state.result.token && !state.practice) {
     params.set(
       "who",
@@ -647,10 +664,34 @@ $$("[data-tab]").forEach((button) =>
   button.addEventListener("click", () => tab(button.dataset.tab)),
 );
 for (const key of ["shape", "size", "level"])
-  $$(`[data-${key}]`).forEach((button) =>
-    button.addEventListener("click", () =>
-      load({ ...state.recipe, [key]: button.dataset[key] }),
-    ),
+  $$(`button[data-${key}]`).forEach((button) =>
+    button.addEventListener("click", () => {
+      const value =
+        key === "shape" && button.dataset.shape === "rectangle"
+          ? state.layout.orientation
+          : button.dataset[key];
+      load({ ...state.recipe, [key]: value });
+    }),
+  );
+for (const key of ["paper", "orientation"])
+  $$(`button[data-${key}]`).forEach((button) =>
+    button.addEventListener("click", () => {
+      if (state.playing || state.busy) return;
+      state.layout = paperLayout({
+        ...state.layout,
+        [key]: button.dataset[key],
+      });
+      if (
+        key === "orientation" &&
+        ["portrait", "landscape"].includes(state.recipe.shape)
+      )
+        load({ ...state.recipe, shape: state.layout.orientation });
+      else {
+        draw();
+        writeURL();
+        updateKeep();
+      }
+    }),
   );
 $("#seed-form").addEventListener("submit", (event) => {
   event.preventDefault();
@@ -668,7 +709,7 @@ $("#generate").addEventListener("click", () =>
 );
 $("#save").addEventListener("click", () => {
   const kept = collection(),
-    exists = kept.some((r) => encode(r) === encode(state.recipe));
+    exists = kept.some((r) => keptKey(r) === documentQuery());
   if (!exists && kept.length >= 100) {
     toast("Your collection has 100 mazes. Export or remove one to make room.");
     return;
@@ -677,8 +718,8 @@ $("#save").addEventListener("click", () => {
     localWrite(
       "mazer-kept-v1",
       exists
-        ? kept.filter((r) => encode(r) !== encode(state.recipe))
-        : [state.recipe, ...kept],
+        ? kept.filter((r) => keptKey(r) !== documentQuery())
+        : [{ ...state.recipe, layout: state.layout }, ...kept],
     )
   ) {
     updateKeep();
@@ -724,9 +765,12 @@ $("#download-svg").addEventListener("click", () =>
 );
 $("#download-json").addEventListener("click", () =>
   download(
-    new Blob([JSON.stringify({ ...state.recipe }, null, 2)], {
-      type: "application/json",
-    }),
+    new Blob(
+      [JSON.stringify({ ...state.recipe, layout: state.layout }, null, 2)],
+      {
+        type: "application/json",
+      },
+    ),
     "json",
   ),
 );
@@ -808,14 +852,23 @@ $("#theme-toggle").addEventListener("click", () => {
 try {
   if (location.search) {
     state.recipe = decode(location.search);
-    const p = new URLSearchParams(location.search),
-      target = Number(p.get("target")),
+    const p = new URLSearchParams(location.search);
+    state.layout = paperLayout(
+      {
+        paper: p.get("paper") ?? undefined,
+        orientation: p.get("orientation") ?? undefined,
+      },
+      state.recipe.shape,
+    );
+    const target = Number(p.get("target")),
       who = p.get("who");
     if (who && target >= 0 && target <= 10000 && p.has("target"))
       state.challenge = { name: who.slice(0, 24), score: Math.round(target) };
   }
 } catch {
-  toast("That link uses an unsupported recipe. Here’s a fresh maze.");
+  toast(
+    "That link contains unsupported settings. Using the default paper layout.",
+  );
 }
 load(state.recipe, { keepChallenge: true });
 if ("serviceWorker" in navigator)

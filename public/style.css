@@ -416,7 +416,7 @@ legend span {
   position: relative;
   user-select: none;
 }
-.maze-stage svg {
+.maze-stage > svg {
   width: 100%;
   height: 100%;
   overflow: visible;
@@ -1321,5 +1321,96 @@ dialog label {
   * {
     transition: none !important;
     scroll-behavior: auto !important;
+  }
+}
+
+/* The sheet is the artifact; controls stay outside its physical bounds. */
+.shape-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.maze-panel {
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  overflow: visible;
+}
+.board-topline {
+  padding: 0 2px 12px;
+}
+.paper-preview {
+  padding: 20px;
+  background: var(--soft);
+  border-radius: 4px;
+}
+.maze-stage,
+.workspace.playing .maze-stage {
+  display: block;
+  height: auto;
+  min-height: 0;
+  width: 100%;
+  margin: 0 auto;
+}
+.maze-stage[data-orientation="portrait"] {
+  max-width: 450px;
+}
+.maze-stage[data-orientation="landscape"] {
+  max-width: 850px;
+}
+.maze-stage > svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  box-shadow: 0 8px 25px #29352c13;
+  overflow: hidden;
+}
+.maze-stage svg[data-maze-art] {
+  overflow: hidden;
+}
+.board-actions {
+  padding: 18px 0;
+}
+.play-stats {
+  padding: 10px 0 18px;
+}
+.playing-actions {
+  margin-top: 16px;
+}
+.print-options #print-summary {
+  font-size: 12px;
+  color: var(--muted);
+}
+@media (max-width: 680px) {
+  .controls .paper-control,
+  .controls .orientation-control,
+  .controls .shape-control {
+    grid-column: 1/-1;
+  }
+  .controls .orientation-control {
+    margin-bottom: 4px;
+  }
+  .controls .paper-control .field-note {
+    min-height: 0;
+  }
+  .paper-preview {
+    padding: 10px;
+  }
+  .board-topline {
+    padding-bottom: 10px;
+  }
+  .maze-panel {
+    padding: 0;
+  }
+  .maze-stage,
+  .workspace.playing .maze-stage {
+    height: auto;
+    min-height: 0;
+    margin-top: 0;
+  }
+  .board-actions {
+    padding: 14px 0;
+  }
+  .play-button {
+    letter-spacing: 1px;
   }
 }

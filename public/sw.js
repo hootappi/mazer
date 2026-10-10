@@ -1,10 +1,11 @@
-const CACHE = "mazer-shell-v1";
+const CACHE = "mazer-shell-v2";
 const ASSETS = [
   "/",
   "/style.css",
   "/src/app.js",
   "/src/maze.js",
   "/src/render.js",
+  "/src/paper.js",
   "/icon.svg",
   "/manifest.webmanifest",
 ];

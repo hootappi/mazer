@@ -227,7 +227,12 @@ export function createApp({
       // Development exposes only browser modules, never server files or data.
       if (
         assetRoot !== root &&
-        !["/src/maze.js", "/src/render.js", "/src/app.js"].includes(path)
+        ![
+          "/src/maze.js",
+          "/src/render.js",
+          "/src/paper.js",
+          "/src/app.js",
+        ].includes(path)
       )
         return send(res, 404, { error: "Not found." });
       readFile(filename, (err, file) => {
@@ -239,6 +244,7 @@ export function createApp({
               ".js": "text/javascript; charset=utf-8",
               ".css": "text/css; charset=utf-8",
               ".svg": "image/svg+xml",
+              ".png": "image/png",
               ".json": "application/json",
               ".webmanifest": "application/manifest+json",
             }[extname(filename)] || "text/plain; charset=utf-8",

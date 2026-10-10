@@ -4,12 +4,12 @@ A little lost. A lot of possibility.
 
 Create a reproducible maze, find your way from A to B, enter your name on the leaderboard, and challenge a friend on the exact same board. Designed for phones and iPads, with desktop keyboard play too.
 
-- Square, portrait, landscape and concentric round mazes.
+- Choose paper size A6–A2, portrait or landscape, then Square, Rectangle or Round. The preview shows the printable sheet with details in its bottom-left corner.
 - Three sizes and three levels of relative route difficulty.
 - Drag to trace, swipe for a step, or use arrow keys/WASD.
 - Server-validated routes, elapsed time and scores. Names are entered after finishing; no signup.
 - Click any leaderboard entry to take on that player's maze and score.
-- Keep mazes on this device, share recipe links, export SVG/PNG/JSON and print A4/A3 or save PDF.
+- Keep mazes on this device, share recipe links, export SVG/PNG/JSON and print the selected A6–A2 sheet or save PDF.
 - Installable web app. Warm paper, After hours and Blue hour colors. Cached creation/practice can work offline; rankings need a connection.
 
 ## Run

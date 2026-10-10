@@ -16,12 +16,12 @@ Mazer creates reproducible mazes that people can play, share with friends, expor
 
 ## First release
 
-1. Create: choose size, maze style and difficulty; generate again or enter a seed. Start with square, portrait rectangle, landscape rectangle and concentric round mazes. Each style must have a real, connected maze topology, rather than only changing its appearance.
+1. Create: choose paper size A6–A2, orientation, maze shape, maze size and difficulty; generate again or enter a seed. Start with square, portrait rectangle, landscape rectangle and concentric round mazes. Each style must have a real, connected maze topology, rather than only changing its appearance.
 2. Play: move from entrance to exit with touch tracing/swiping or keyboard. Show elapsed time and moves, support an unranked practice mode, and give a clear completion result.
 3. Score: compare actual moves with the shortest valid route and reward speed within comparable maze settings. Document and version the scoring formula. Provide a global points leaderboard and a per-maze filter. Same-board challenges are the fairest comparison; do not rank unrelated puzzles by raw elapsed time.
 4. Challenge: share a permanent URL containing the versioned maze recipe. A friend gets exactly the same maze and can compare their result with the challenger.
 5. Leaderboard: real persistent scores, guest names entered after completion without signup. Server issues ranked run sessions and validates legal movement and completion. Bound input sizes, rate-limit submissions and render names safely. This is casual competition; movement validation cannot establish that a player did not use an automated solver.
-6. Export: SVG, PNG, a reproducible JSON recipe and print layouts for A4/A3 with an optional solution page. The geometry remains useful for future manufacturing, but is not advertised as fabrication-ready.
+6. Export: SVG, PNG, a reproducible JSON recipe and matching paper layouts for A6–A2 with an optional solution overlay. The geometry remains useful for future manufacturing, but is not advertised as fabrication-ready.
 7. Keep: save favorite mazes and personal records in the browser. Explain that these are local to the device.
 8. Themes: ship one Wobble-inspired theme, keep presentation separate from maze and rules, and provide two small alternative visual studies without building a large theme system.
 
