@@ -324,13 +324,6 @@ function start() {
   $("#moves").textContent = "0";
   updateOrientation();
   $("#ready-dialog").showModal();
-  document.documentElement
-    .requestFullscreen?.()
-    .then(() => {
-      if (!state.gameOpen && document.fullscreenElement)
-        document.exitFullscreen().catch(() => {});
-    })
-    .catch(() => {});
 }
 async function begin() {
   if (state.busy || state.playing || state.rotationBlocked || !state.gameOpen)
@@ -339,6 +332,21 @@ async function begin() {
   state.busy = true;
   $("#ready-yes").disabled = true;
   $("#play").disabled = true;
+  // A fullscreen element enters the browser's top layer. Close readiness first
+  // so promoting fullscreen can never cover the YES button or its modal backdrop.
+  $("#ready-dialog").close();
+  $("#run-mode").textContent = "Starting…";
+  document.documentElement
+    .requestFullscreen?.()
+    .then(() => {
+      if (!state.gameOpen || generation !== state.generation) {
+        if (document.fullscreenElement) {
+          expectedFullscreenExit = true;
+          document.exitFullscreen().catch(() => {});
+        }
+      }
+    })
+    .catch(() => {});
   try {
     const run = await api("runs", { recipe: state.recipe });
     if (generation !== state.generation) return;
@@ -887,6 +895,12 @@ window.addEventListener(
   { passive: false },
 );
 document.addEventListener("fullscreenchange", () => {
+  if (document.fullscreenElement) {
+    for (const dialog of $$("dialog[open]")) {
+      dialog.close();
+      dialog.showModal();
+    }
+  }
   if (!document.fullscreenElement) {
     if (expectedFullscreenExit) expectedFullscreenExit = false;
     else if (state.gameOpen) stop();
@@ -936,7 +950,13 @@ window.addEventListener("resize", () => {
   }
 });
 $("#result-dialog").addEventListener("close", () => {
-  if (state.gameOpen && !state.playing && !$("#ready-dialog").open) stop();
+  if (
+    state.gameOpen &&
+    !state.playing &&
+    !$("#ready-dialog").open &&
+    !$("#result-dialog").open
+  )
+    stop();
 });
 $("#exit-play").addEventListener("click", stop);
 $("#restart").addEventListener("click", () => {

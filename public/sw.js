@@ -1,4 +1,4 @@
-const CACHE = "mazer-shell-v4";
+const CACHE = "mazer-shell-v5";
 const ASSETS = [
   "/",
   "/style.css",

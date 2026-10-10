@@ -10,6 +10,7 @@ async function play(page) {
   await page.locator("#play").click();
   await page.locator("#ready-yes").click();
   await expect(page.locator("#ready-dialog")).not.toBeVisible();
+  await expect(page.locator("#run-mode")).toHaveText(/^(Ranked|Practice)$/);
 }
 async function details(page) {
   return page.evaluate(async () => {
@@ -137,6 +138,7 @@ test("round trace works and hints make a run unranked", async ({ page }) => {
   await page.locator("#play-again").click();
   await page.locator("#ready-yes").click();
   await expect(page.locator("#ready-dialog")).not.toBeVisible();
+  await expect(page.locator("#run-mode")).toHaveText(/^(Ranked|Practice)$/);
   await page.locator("#hint").click();
   await expect(page.locator("#run-mode")).toHaveText("Practice");
   await page.locator("#exit-play").click();
@@ -484,6 +486,7 @@ test("immersive readiness, pause, trail drawing, restart and stop keep the page 
   ).toBeTruthy();
   await page.locator("#ready-yes").click();
   await expect(page.locator("#ready-dialog")).not.toBeVisible();
+  await expect(page.locator("#run-mode")).toHaveText(/^(Ranked|Practice)$/);
   expect(starts).toBe(1);
   const scroll = await page.evaluate(() => scrollY);
   await page.mouse.wheel(0, 500);
@@ -555,6 +558,7 @@ test("phone orientation prompts gate readiness and block input after rotation", 
   await expect(page.locator("#ready-yes")).toBeEnabled();
   await page.locator("#ready-yes").click();
   await expect(page.locator("#ready-dialog")).not.toBeVisible();
+  await expect(page.locator("#run-mode")).toHaveText(/^(Ranked|Practice)$/);
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(page.locator("#rotate-prompt")).toBeVisible();
   await page.evaluate(() =>
@@ -588,9 +592,19 @@ test("native fullscreen can restart and exit without cancelling the next ready s
   });
   await page.locator("#play").click();
   await expect(page.locator("#ready-dialog")).toBeVisible();
-  await page.waitForFunction(() => !!document.fullscreenElement);
+  expect(await page.evaluate(() => !!document.fullscreenElement)).toBeFalsy();
+  expect(
+    await page.locator("#ready-yes").evaluate((el) => {
+      const b = el.getBoundingClientRect();
+      return (
+        document.elementFromPoint(b.x + b.width / 2, b.y + b.height / 2) === el
+      );
+    }),
+  ).toBeTruthy();
   await page.locator("#ready-yes").click();
+  await page.waitForFunction(() => !!document.fullscreenElement);
   await expect(page.locator("#ready-dialog")).not.toBeVisible();
+  await expect(page.locator("#run-mode")).toHaveText(/^(Ranked|Practice)$/);
   await page.locator("#restart").click();
   await expect(page.locator("#ready-dialog")).toBeVisible();
   await page.waitForTimeout(300);
@@ -598,4 +612,34 @@ test("native fullscreen can restart and exit without cancelling the next ready s
   await page.locator("#ready-stop").click();
   await page.waitForFunction(() => !document.fullscreenElement);
   await expect(page.locator("#creator-controls")).toBeVisible();
+});
+
+test("readiness stays clickable and fullscreen rejection cannot block starting", async ({
+  page,
+}, info) => {
+  test.skip(
+    info.project.name !== "desktop",
+    "Fullscreen rejection is checked once; fallback layout is covered on every profile.",
+  );
+  await page.addInitScript(() => {
+    Element.prototype.requestFullscreen = function () {
+      window.readyWasOpenAtFullscreenRequest =
+        document.querySelector("#ready-dialog").open;
+      return Promise.reject(new Error("Fullscreen unavailable"));
+    };
+  });
+  await page.goto("/?v=1&seed=READY-LAYER&shape=square&size=small&level=easy");
+  await page.locator("#play").click();
+  await expect(page.locator("#ready-dialog")).toBeVisible();
+  expect(
+    await page.evaluate(() => window.readyWasOpenAtFullscreenRequest),
+  ).toBeUndefined();
+  await page.locator("#ready-yes").click();
+  await expect(page.locator("#run-mode")).toHaveText("Ranked");
+  expect(
+    await page.evaluate(() => window.readyWasOpenAtFullscreenRequest),
+  ).toBe(false);
+  await expect(page.locator("#ready-dialog")).not.toBeVisible();
+  await expect(page.locator("#run-mode")).toHaveText(/^(Ranked|Practice)$/);
+  await page.locator("#exit-play").click();
 });
