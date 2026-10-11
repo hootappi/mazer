@@ -643,3 +643,74 @@ test("readiness stays clickable and fullscreen rejection cannot block starting",
   await expect(page.locator("#run-mode")).toHaveText(/^(Ranked|Practice)$/);
   await page.locator("#exit-play").click();
 });
+
+test("touch gameplay keeps downward swipes in the board and exits using the corner X", async ({
+  page,
+}, info) => {
+  test.skip(
+    info.project.name === "desktop",
+    "Real touch gestures apply to phone and iPad profiles.",
+  );
+  await page.addInitScript(() => {
+    window.nativeFullscreenCalls = 0;
+    Element.prototype.requestFullscreen = function () {
+      window.nativeFullscreenCalls++;
+      return Promise.resolve();
+    };
+  });
+  await page.goto("/?v=1&seed=IOS-0&shape=square&size=small&level=easy");
+  await play(page);
+  expect(await page.evaluate(() => window.nativeFullscreenCalls)).toBe(0);
+  await page.locator('[data-input="swipe"]').click();
+  const maze = await details(page);
+  expect(maze.cells[maze.solution[1]].row).toBe(1);
+  const box = await page.locator("#maze-stage").boundingBox(),
+    start = { x: box.x + box.width / 2, y: box.y + box.height / 2 - 20 },
+    end = { x: start.x, y: start.y + 55 },
+    session = await page.context().newCDPSession(page);
+  const scroll = await page.evaluate(() => scrollY);
+  await session.send("Input.dispatchTouchEvent", {
+    type: "touchStart",
+    touchPoints: [{ ...start, id: 0 }],
+  });
+  await session.send("Input.dispatchTouchEvent", {
+    type: "touchMove",
+    touchPoints: [{ ...end, id: 0 }],
+  });
+  await session.send("Input.dispatchTouchEvent", {
+    type: "touchEnd",
+    touchPoints: [],
+  });
+  await expect(page.locator("#moves")).toHaveText("1");
+  await expect(page.locator("body")).toHaveClass(/game-mode/);
+  expect(await page.evaluate(() => scrollY)).toBe(scroll);
+  await page.screenshot({
+    path: `test-results/${info.project.name}-touch-close.png`,
+  });
+  await page.getByRole("button", { name: "Exit game", exact: true }).click();
+  await expect(page.locator("#creator-controls")).toBeVisible();
+  await expect(page.locator("#game-close")).toBeHidden();
+});
+
+test("iPadOS desktop identity also avoids native fullscreen", async ({
+  page,
+}, info) => {
+  test.skip(
+    info.project.name !== "desktop",
+    "Simulate iPad with a fine pointer and Mac identity once.",
+  );
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "platform", { get: () => "MacIntel" });
+    Object.defineProperty(navigator, "maxTouchPoints", { get: () => 5 });
+    window.nativeFullscreenCalls = 0;
+    Element.prototype.requestFullscreen = function () {
+      window.nativeFullscreenCalls++;
+      return Promise.resolve();
+    };
+  });
+  await page.goto("/?v=1&seed=IPAD-MAC&shape=square&size=small&level=easy");
+  await play(page);
+  expect(await page.evaluate(() => window.nativeFullscreenCalls)).toBe(0);
+  await page.locator("#game-close").click();
+  await expect(page.locator("#creator-controls")).toBeVisible();
+});

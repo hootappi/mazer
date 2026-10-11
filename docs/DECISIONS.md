@@ -47,3 +47,9 @@ Immersive gameplay update, 10 October 2026:
 - Touch devices prompt for the selected paper orientation before YES and block gameplay while the orientation differs. Rotation during an active run does not stop ranked time. No sensor permissions are requested.
 - Draw is the default: touching a connected adjacent cell advances immediately. Starting on an existing trail cell legally retraces the visited path to that cell, counting backtracking moves, before tracing onward. Remote unvisited cells cannot teleport the player or cross closed walls. Swipe is a distinct directional step mode; a gesture outside the maze also supports a directional step. Existing server validation and generator fingerprints remain unchanged.
 - Each game session has an internal generation counter so late run/finish responses cannot resume or overwrite a stopped/restarted session.
+
+iOS swipe usability fix, 11 October 2026:
+
+- Touch devices and iOS/iPadOS use the locked full-window game view without requesting native fullscreen. This avoids the native fullscreen downward-swipe exit gesture competing with gameplay. iPadOS identifying itself as MacIntel is also detected through touch capability, including with a fine pointer.
+- Desktop devices retain native fullscreen where available. A 44 px X button at the top-right exits the game and restores the creator. Existing Stop and modal exit actions remain available.
+- The board also cancels touchmove defaults while a game is open; browser scrolling remains disabled. This does not intercept touches on popup forms or controls. Physical iOS Safari verification is left to device testing; browser automation verifies actual touch events and simulated iPadOS desktop identity.

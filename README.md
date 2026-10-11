@@ -6,7 +6,7 @@ Create a reproducible maze, find your way from A to B, enter your name on the le
 
 - Choose paper size A6–A2, portrait or landscape, then Square, Rectangle or Round. The preview shows the printable sheet with details in its bottom-left corner.
 - Larger paper generates more maze cells at a fixed physical spacing. Small/Medium/Large use 14/10/7 mm passages, with three levels of relative route difficulty. Print at actual size (100%) to preserve spacing.
-- Play opens a locked full-screen board, with an “Are you ready?” step before timing begins. Touch devices prompt you to turn to the chosen paper orientation.
+- Play opens a locked full-screen board, with an “Are you ready?” step before timing begins. Touch devices use a locked full-window view to keep downward swipes inside the game, and prompt you to turn to the chosen paper orientation. Exit using the X in the top-right corner.
 - Draw through passages, tap an adjacent cell, continue from your existing trail, switch to Swipe, or use arrow keys/WASD. Pause, restart and stop controls stay on screen. Pausing blocks movement; ranked time continues.
 - Server-validated routes, elapsed time and scores. Names are entered after finishing; no signup.
 - Click any leaderboard entry to take on that player's maze and score.

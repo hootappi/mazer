@@ -277,6 +277,7 @@ function setPlayUI(active) {
   $$("header, nav, footer, .page-intro, .lower-note").forEach((el) => {
     el.inert = active;
   });
+  $("#game-close").hidden = !active;
   $("#creator-controls").hidden = active;
   $(".workspace").classList.toggle("playing", active);
   $("#maze-stage").classList.toggle("is-playing", active);
@@ -325,6 +326,13 @@ function start() {
   updateOrientation();
   $("#ready-dialog").showModal();
 }
+function useNativeFullscreen() {
+  // iPadOS can identify itself as a Mac, including when a trackpad is attached.
+  const ios =
+    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  return !ios && !matchMedia("(pointer: coarse)").matches;
+}
 async function begin() {
   if (state.busy || state.playing || state.rotationBlocked || !state.gameOpen)
     return;
@@ -336,17 +344,18 @@ async function begin() {
   // so promoting fullscreen can never cover the YES button or its modal backdrop.
   $("#ready-dialog").close();
   $("#run-mode").textContent = "Starting…";
-  document.documentElement
-    .requestFullscreen?.()
-    .then(() => {
-      if (!state.gameOpen || generation !== state.generation) {
-        if (document.fullscreenElement) {
-          expectedFullscreenExit = true;
-          document.exitFullscreen().catch(() => {});
+  if (useNativeFullscreen())
+    document.documentElement
+      .requestFullscreen?.()
+      .then(() => {
+        if (!state.gameOpen || generation !== state.generation) {
+          if (document.fullscreenElement) {
+            expectedFullscreenExit = true;
+            document.exitFullscreen().catch(() => {});
+          }
         }
-      }
-    })
-    .catch(() => {});
+      })
+      .catch(() => {});
   try {
     const run = await api("runs", { recipe: state.recipe });
     if (generation !== state.generation) return;
@@ -887,6 +896,13 @@ $("#play").addEventListener("click", start);
 $("#ready-yes").addEventListener("click", begin);
 $("#ready-stop").addEventListener("click", stop);
 $("#rotate-stop").addEventListener("click", stop);
+$(".paper-preview").addEventListener(
+  "touchmove",
+  (event) => {
+    if (state.gameOpen) event.preventDefault();
+  },
+  { passive: false },
+);
 window.addEventListener(
   "wheel",
   (event) => {
@@ -958,6 +974,7 @@ $("#result-dialog").addEventListener("close", () => {
   )
     stop();
 });
+$("#game-close").addEventListener("click", stop);
 $("#exit-play").addEventListener("click", stop);
 $("#restart").addEventListener("click", () => {
   stop();
